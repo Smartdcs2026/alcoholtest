@@ -1,7 +1,16 @@
 
 /************************************************************
  * app.js
- * โหลดตัวเลือก ควบคุมแบบฟอร์ม และ Gauge
+ * ระบบตรวจวัดปริมาณแอลกอฮอล์
+ *
+ * รองรับ:
+ * - โหลดตัวเลือกจาก API
+ * - รับภาพจาก camera.js
+ * - เพิ่มและลบรอบตรวจ
+ * - กดบันทึกได้โดยไม่ต้องกดเพิ่มรอบก่อน
+ * - สร้างรอบตรวจอัตโนมัติเมื่อกดบันทึก
+ * - ส่งข้อมูลผ่าน AlcoholAPI.saveRecord()
+ * - ป้องกันการกดบันทึกซ้ำ
  ************************************************************/
 
 (function (window, document) {
@@ -13,15 +22,43 @@
   const API =
     window.AlcoholAPI;
 
+
+  /************************************************************
+   * State
+   ************************************************************/
+
   const state = {
-    initialized: false,
-    loading: false,
-    online: navigator.onLine,
+    initialized:
+      false,
+
+    loading:
+      false,
+
+    saving:
+      false,
+
+    online:
+      navigator.onLine,
+
+    selectedCapture:
+      null,
+
+    rounds:
+      [],
+
+    activeRequestId:
+      '',
 
     options: {
-      personTypes: [],
-      inspectors: [],
-      busLines: [],
+      personTypes:
+        [],
+
+      inspectors:
+        [],
+
+      busLines:
+        [],
+
       checkpoints: [
         'ป้อมหน้า',
         'ป้อมล่าง'
@@ -30,31 +67,47 @@
 
     config: {
       alertThreshold:
-        Number.isFinite(
-          Number(CONFIG.ALERT_THRESHOLD)
-        )
-          ? Number(CONFIG.ALERT_THRESHOLD)
-          : 1,
+        finiteNumber(
+          CONFIG.ALERT_THRESHOLD,
+          1
+        ),
 
       gaugeMax:
-        Number.isFinite(
-          Number(CONFIG.GAUGE_MAX)
-        )
-          ? Number(CONFIG.GAUGE_MAX)
-          : 50,
+        finiteNumber(
+          CONFIG.GAUGE_MAX,
+          50
+        ),
 
       maxRounds:
-        Number.isFinite(
-          Number(CONFIG.MAX_ROUNDS)
+        finiteNumber(
+          CONFIG.MAX_ROUNDS,
+          5
         )
-          ? Number(CONFIG.MAX_ROUNDS)
-          : 5
     }
   };
 
 
+  /************************************************************
+   * Basic Helpers
+   ************************************************************/
+
+  function finiteNumber(
+    value,
+    fallback
+  ) {
+    const number =
+      Number(value);
+
+    return Number.isFinite(number)
+      ? number
+      : fallback;
+  }
+
+
   function getElement(id) {
-    return document.getElementById(id);
+    return document.getElementById(
+      id
+    );
   }
 
 
@@ -75,17 +128,22 @@
     value
   ) {
     const element =
-      typeof elementOrId === 'string'
-        ? getElement(elementOrId)
+      typeof elementOrId ===
+      'string'
+        ? getElement(
+          elementOrId
+        )
         : elementOrId;
 
-    if (element) {
-      element.textContent =
-        value === null ||
-        value === undefined
-          ? ''
-          : String(value);
+    if (!element) {
+      return;
     }
+
+    element.textContent =
+      value === null ||
+      value === undefined
+        ? ''
+        : String(value);
   }
 
 
@@ -94,8 +152,11 @@
     hidden
   ) {
     const element =
-      typeof elementOrId === 'string'
-        ? getElement(elementOrId)
+      typeof elementOrId ===
+      'string'
+        ? getElement(
+          elementOrId
+        )
         : elementOrId;
 
     if (element) {
@@ -105,12 +166,18 @@
   }
 
 
+  /************************************************************
+   * System Status
+   ************************************************************/
+
   function setSystemStatus(
     message,
     type
   ) {
     const element =
-      getElement('systemStatus');
+      getElement(
+        'systemStatus'
+      );
 
     if (!element) {
       return;
@@ -121,7 +188,10 @@
 
     element.className =
       'system-status ' +
-      (type || 'info');
+      (
+        type ||
+        'info'
+      );
 
     element.title =
       message || '';
@@ -133,7 +203,9 @@
     text
   ) {
     const badge =
-      getElement('connectionBadge');
+      getElement(
+        'connectionBadge'
+      );
 
     if (!badge) {
       return;
@@ -161,7 +233,13 @@
   }
 
 
-  function formatBangkokDateTime(date) {
+  /************************************************************
+   * Date / Time
+   ************************************************************/
+
+  function formatBangkokDateTime(
+    date
+  ) {
     const formatter =
       new Intl.DateTimeFormat(
         'en-GB',
@@ -170,15 +248,26 @@
             CONFIG.TIMEZONE ||
             'Asia/Bangkok',
 
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
+          day:
+            '2-digit',
 
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
+          month:
+            '2-digit',
 
-          hourCycle: 'h23'
+          year:
+            'numeric',
+
+          hour:
+            '2-digit',
+
+          minute:
+            '2-digit',
+
+          second:
+            '2-digit',
+
+          hourCycle:
+            'h23'
         }
       );
 
@@ -186,12 +275,17 @@
 
     formatter
       .formatToParts(
-        date || new Date()
+        date ||
+        new Date()
       )
-      .forEach(function (part) {
-        parts[part.type] =
-          part.value;
-      });
+      .forEach(
+        function (part) {
+          parts[
+            part.type
+          ] =
+            part.value;
+        }
+      );
 
     return (
       parts.day +
@@ -215,14 +309,18 @@
         new Date();
 
       const timeElement =
-        getElement('appDateTime');
+        getElement(
+          'appDateTime'
+        );
 
       if (!timeElement) {
         return;
       }
 
       timeElement.textContent =
-        formatBangkokDateTime(now);
+        formatBangkokDateTime(
+          now
+        );
 
       timeElement.dateTime =
         now.toISOString();
@@ -237,7 +335,13 @@
   }
 
 
-  function normalizeOptionValue(item) {
+  /************************************************************
+   * Options
+   ************************************************************/
+
+  function normalizeOptionValue(
+    item
+  ) {
     if (
       item === null ||
       item === undefined
@@ -246,13 +350,18 @@
     }
 
     if (
-      typeof item === 'string' ||
-      typeof item === 'number'
+      typeof item ===
+      'string' ||
+      typeof item ===
+      'number'
     ) {
       return cleanText(item);
     }
 
-    if (typeof item === 'object') {
+    if (
+      typeof item ===
+      'object'
+    ) {
       return cleanText(
         item.value ||
         item.name ||
@@ -275,16 +384,21 @@
     }
 
     const previousValue =
-      cleanText(select.value);
+      cleanText(
+        select.value
+      );
 
-    select.innerHTML = '';
+    select.innerHTML =
+      '';
 
     const placeholderOption =
       document.createElement(
         'option'
       );
 
-    placeholderOption.value = '';
+    placeholderOption.value =
+      '';
+
     placeholderOption.textContent =
       placeholder;
 
@@ -292,53 +406,63 @@
       placeholderOption
     );
 
-    const seen = {};
+    const seen =
+      Object.create(null);
 
-    (Array.isArray(values)
-      ? values
-      : []
-    ).forEach(function (item) {
-      const value =
-        normalizeOptionValue(item);
+    (
+      Array.isArray(values)
+        ? values
+        : []
+    ).forEach(
+      function (item) {
+        const value =
+          normalizeOptionValue(
+            item
+          );
 
-      if (!value) {
-        return;
-      }
+        if (!value) {
+          return;
+        }
 
-      const key =
-        value.toLowerCase();
+        const key =
+          value.toLowerCase();
 
-      if (seen[key]) {
-        return;
-      }
+        if (seen[key]) {
+          return;
+        }
 
-      seen[key] = true;
+        seen[key] =
+          true;
 
-      const option =
-        document.createElement(
-          'option'
+        const option =
+          document.createElement(
+            'option'
+          );
+
+        option.value =
+          value;
+
+        option.textContent =
+          value;
+
+        select.appendChild(
+          option
         );
-
-      option.value =
-        value;
-
-      option.textContent =
-        value;
-
-      select.appendChild(
-        option
-      );
-    });
+      }
+    );
 
     if (
       previousValue &&
-      Array.from(select.options)
-        .some(function (option) {
+      Array.from(
+        select.options
+      ).some(
+        function (option) {
           return (
             option.value ===
             previousValue
           );
-        })
+        }
+      )
     ) {
       select.value =
         previousValue;
@@ -346,45 +470,66 @@
   }
 
 
-  function setSelectsLoading(loading) {
+  function setSelectsLoading(
+    loading
+  ) {
     [
       'personTypeSelect',
       'inspectorSelect',
       'busLineSelect'
-    ].forEach(function (id) {
-      const select =
-        getElement(id);
+    ].forEach(
+      function (id) {
+        const select =
+          getElement(id);
 
-      if (select) {
-        select.disabled =
-          Boolean(loading);
+        if (select) {
+          select.disabled =
+            Boolean(
+              loading
+            );
+        }
       }
-    });
+    );
   }
 
 
   function fillOptions() {
     fillSelect(
-      getElement('personTypeSelect'),
-      state.options.personTypes,
+      getElement(
+        'personTypeSelect'
+      ),
+      state.options
+        .personTypes,
       'เลือกประเภทบุคคล'
     );
 
     fillSelect(
-      getElement('inspectorSelect'),
-      state.options.inspectors,
+      getElement(
+        'inspectorSelect'
+      ),
+      state.options
+        .inspectors,
       'เลือกผู้ตรวจวัด'
     );
 
     fillSelect(
-      getElement('busLineSelect'),
-      state.options.busLines,
+      getElement(
+        'busLineSelect'
+      ),
+      state.options
+        .busLines,
       'เลือกสายรถ'
     );
   }
 
 
-  function isOtherOption(value) {
+  /************************************************************
+   * Person Type
+   ************************************************************/
+
+  function isOtherOption(
+    value
+  ) {
     const text =
       cleanText(value)
         .toLowerCase();
@@ -397,29 +542,41 @@
   }
 
 
-  function isBusType(value) {
+  function isBusType(
+    value
+  ) {
     const text =
       cleanText(value)
         .toLowerCase();
 
     return (
       text.includes('พขร') ||
-      text.includes('รถรับส่ง') ||
+      text.includes(
+        'รถรับส่ง'
+      ) ||
       text.includes('bus')
     );
   }
 
 
-  function requiresCompany(value) {
+  function requiresCompany(
+    value
+  ) {
     const text =
       cleanText(value)
         .toLowerCase();
 
     return (
-      text.includes('เวนเดอร์') ||
-      text.includes('vendor') ||
+      text.includes(
+        'เวนเดอร์'
+      ) ||
+      text.includes(
+        'vendor'
+      ) ||
       text.includes('ช่าง') ||
-      text.includes('contractor') ||
+      text.includes(
+        'contractor'
+      ) ||
       isOtherOption(text)
     );
   }
@@ -427,7 +584,9 @@
 
   function updatePersonTypeFields() {
     const personTypeSelect =
-      getElement('personTypeSelect');
+      getElement(
+        'personTypeSelect'
+      );
 
     if (!personTypeSelect) {
       return;
@@ -439,14 +598,20 @@
       );
 
     const showOtherType =
-      isOtherOption(personType);
+      isOtherOption(
+        personType
+      );
 
     const showBusLine =
-      isBusType(personType);
+      isBusType(
+        personType
+      );
 
     const showCompany =
       !showBusLine &&
-      requiresCompany(personType);
+      requiresCompany(
+        personType
+      );
 
     setHidden(
       'personTypeOtherGroup',
@@ -464,38 +629,50 @@
     );
 
     const otherTypeInput =
-      getElement('personTypeOther');
+      getElement(
+        'personTypeOther'
+      );
 
     const companyInput =
-      getElement('companyInput');
+      getElement(
+        'companyInput'
+      );
 
     const busLineSelect =
-      getElement('busLineSelect');
+      getElement(
+        'busLineSelect'
+      );
 
     const busLineOther =
-      getElement('busLineOther');
+      getElement(
+        'busLineOther'
+      );
 
     if (
       !showOtherType &&
       otherTypeInput
     ) {
-      otherTypeInput.value = '';
+      otherTypeInput.value =
+        '';
     }
 
     if (
       !showCompany &&
       companyInput
     ) {
-      companyInput.value = '';
+      companyInput.value =
+        '';
     }
 
     if (!showBusLine) {
       if (busLineSelect) {
-        busLineSelect.value = '';
+        busLineSelect.value =
+          '';
       }
 
       if (busLineOther) {
-        busLineOther.value = '';
+        busLineOther.value =
+          '';
       }
 
       setHidden(
@@ -503,12 +680,16 @@
         true
       );
     }
+
+    updateActionButtons();
   }
 
 
   function updateBusLineOtherField() {
     const select =
-      getElement('busLineSelect');
+      getElement(
+        'busLineSelect'
+      );
 
     if (!select) {
       return;
@@ -526,21 +707,34 @@
 
     if (!showOther) {
       const input =
-        getElement('busLineOther');
+        getElement(
+          'busLineOther'
+        );
 
       if (input) {
-        input.value = '';
+        input.value =
+          '';
       }
     }
+
+    updateActionButtons();
   }
 
 
-  function normalizeMeasurementValue(value) {
+  /************************************************************
+   * Measurement / Gauge
+   ************************************************************/
+
+  function normalizeMeasurementValue(
+    value
+  ) {
     const number =
       Number(value);
 
     if (
-      !Number.isFinite(number) ||
+      !Number.isFinite(
+        number
+      ) ||
       number < 0
     ) {
       return 0;
@@ -553,10 +747,55 @@
   }
 
 
-  function getGaugeLevelClass(value) {
-    /*
-     * ต่ำกว่า 1.00 เท่านั้นที่อยู่ในระดับผ่าน
-     */
+  function readMeasurement() {
+    const input =
+      getElement(
+        'measurementInput'
+      );
+
+    const rawValue =
+      input
+        ? cleanText(
+          input.value
+        )
+        : '';
+
+    if (rawValue === '') {
+      return {
+        valid:
+          false,
+
+        empty:
+          true,
+
+        value:
+          0
+      };
+    }
+
+    const value =
+      Number(rawValue);
+
+    return {
+      valid:
+        Number.isFinite(
+          value
+        ) &&
+        value >= 0 &&
+        value <= 999,
+
+      empty:
+        false,
+
+      value:
+        value
+    };
+  }
+
+
+  function getGaugeLevelClass(
+    value
+  ) {
     if (value < 1) {
       return 'level-safe';
     }
@@ -579,22 +818,22 @@
 
   function updateGauge() {
     const input =
-      getElement('measurementInput');
+      getElement(
+        'measurementInput'
+      );
 
     if (!input) {
       return;
     }
 
     const rawValue =
-      cleanText(input.value);
+      cleanText(
+        input.value
+      );
 
     const hasValue =
       rawValue !== '';
 
-    /*
-     * ใช้ 0 สำหรับคำนวณตำแหน่ง Gauge เท่านั้น
-     * ไม่กรอก 0 ให้ผู้ใช้อัตโนมัติ
-     */
     const value =
       hasValue
         ? normalizeMeasurementValue(
@@ -606,8 +845,10 @@
       Math.max(
         1,
         Number(
-          state.config.gaugeMax
-        ) || 50
+          state.config
+            .gaugeMax
+        ) ||
+        50
       );
 
     const percentage =
@@ -618,22 +859,27 @@
           (
             value /
             gaugeMaximum
-          ) * 100
+          ) *
+          100
         )
       );
 
     const gaugeMask =
-      getElement('gaugeMask');
+      getElement(
+        'gaugeMask'
+      );
 
     const gaugeIndicator =
-      getElement('gaugeIndicator');
+      getElement(
+        'gaugeIndicator'
+      );
 
-    /*
-     * Gauge แนวนอน
-     */
     if (gaugeMask) {
       gaugeMask.style.width =
-        (100 - percentage) +
+        (
+          100 -
+          percentage
+        ) +
         '%';
 
       gaugeMask.style.height =
@@ -653,54 +899,74 @@
       'gaugeValue',
       hasValue
         ? (
-          value >= gaugeMaximum
-            ? gaugeMaximum + '+ Mg%'
-            : value.toFixed(2) + ' Mg%'
+          value >=
+          gaugeMaximum
+            ? (
+              gaugeMaximum +
+              '+ Mg%'
+            )
+            : (
+              value.toFixed(2) +
+              ' Mg%'
+            )
         )
         : 'ยังไม่กรอก'
     );
 
     const threshold =
       Number(
-        state.config.alertThreshold
+        state.config
+          .alertThreshold
       );
 
     const finalThreshold =
-      Number.isFinite(threshold)
+      Number.isFinite(
+        threshold
+      )
         ? threshold
         : 1;
 
-    /*
-     * ตั้งแต่ 1.00 Mg% ขึ้นไป = DENY
-     */
     const isDenied =
       hasValue &&
-      value >= finalThreshold;
+      value >=
+      finalThreshold;
 
     const gaugePanel =
-      getElement('gaugePanel');
+      getElement(
+        'gaugePanel'
+      );
 
     if (gaugePanel) {
-      gaugePanel.classList.remove(
-        'level-safe',
-        'level-warning',
-        'level-orange',
-        'level-danger',
-        'level-critical'
-      );
+      gaugePanel
+        .classList
+        .remove(
+          'level-safe',
+          'level-warning',
+          'level-orange',
+          'level-danger',
+          'level-critical'
+        );
 
-      gaugePanel.classList.add(
-        getGaugeLevelClass(value)
-      );
+      gaugePanel
+        .classList
+        .add(
+          getGaugeLevelClass(
+            value
+          )
+        );
 
-      gaugePanel.classList.toggle(
-        'is-denied',
-        isDenied
-      );
+      gaugePanel
+        .classList
+        .toggle(
+          'is-denied',
+          isDenied
+        );
     }
 
     const alertBanner =
-      getElement('alertBanner');
+      getElement(
+        'alertBanner'
+      );
 
     if (alertBanner) {
       alertBanner.hidden =
@@ -714,13 +980,22 @@
         ' Mg%'
       );
     }
+
+    updateActionButtons();
   }
 
 
-  function applyBackendConfig(config) {
+  /************************************************************
+   * Backend Configuration
+   ************************************************************/
+
+  function applyBackendConfig(
+    config
+  ) {
     if (
       !config ||
-      typeof config !== 'object'
+      typeof config !==
+      'object'
     ) {
       return;
     }
@@ -741,49 +1016,79 @@
       );
 
     if (
-      Number.isFinite(threshold) &&
+      Number.isFinite(
+        threshold
+      ) &&
       threshold >= 0
     ) {
-      state.config.alertThreshold =
+      state.config
+        .alertThreshold =
         threshold;
     }
 
     if (
-      Number.isFinite(gaugeMax) &&
+      Number.isFinite(
+        gaugeMax
+      ) &&
       gaugeMax > 0
     ) {
-      state.config.gaugeMax =
+      state.config
+        .gaugeMax =
         gaugeMax;
     }
 
     if (
-      Number.isFinite(maxRounds) &&
+      Number.isFinite(
+        maxRounds
+      ) &&
       maxRounds > 0
     ) {
-      state.config.maxRounds =
-        maxRounds;
+      state.config
+        .maxRounds =
+        Math.floor(
+          maxRounds
+        );
     }
   }
 
 
-  function getErrorMessage(error) {
+  /************************************************************
+   * API Errors
+   ************************************************************/
+
+  function getErrorMessage(
+    error,
+    fallback
+  ) {
     if (!error) {
-      return 'ไม่สามารถโหลดข้อมูลตัวเลือกได้';
+      return (
+        fallback ||
+        'เกิดข้อผิดพลาด'
+      );
     }
 
     let message =
-      cleanText(error.message) ||
-      'ไม่สามารถโหลดข้อมูลตัวเลือกได้';
+      cleanText(
+        error.message
+      ) ||
+      fallback ||
+      'เกิดข้อผิดพลาด';
 
     const code =
-      cleanText(error.code);
+      cleanText(
+        error.code
+      );
 
     const requestId =
-      cleanText(error.requestId);
+      cleanText(
+        error.requestId
+      );
 
     if (code) {
       message +=
-        ' [' + code + ']';
+        ' [' +
+        code +
+        ']';
     }
 
     if (requestId) {
@@ -795,6 +1100,10 @@
     return message;
   }
 
+
+  /************************************************************
+   * Load Options
+   ************************************************************/
 
   async function loadSystemData() {
     if (
@@ -819,10 +1128,17 @@
       return;
     }
 
-    state.loading = true;
-    state.initialized = false;
+    state.loading =
+      true;
 
-    setSelectsLoading(true);
+    state.initialized =
+      false;
+
+    setSelectsLoading(
+      true
+    );
+
+    updateActionButtons();
 
     setConnectionStatus(
       navigator.onLine,
@@ -835,10 +1151,6 @@
     );
 
     try {
-      /*
-       * Health ใช้ตรวจสอบประกอบเท่านั้น
-       * หาก Health มีปัญหายังพยายามโหลด Options ต่อ
-       */
       try {
         if (
           typeof API.health ===
@@ -846,7 +1158,9 @@
         ) {
           await API.health();
         }
-      } catch (healthError) {
+      } catch (
+        healthError
+      ) {
         console.warn(
           'Health check failed:',
           healthError
@@ -881,30 +1195,38 @@
       state.options = {
         personTypes:
           Array.isArray(
-            response.options.personTypes
+            response.options
+              .personTypes
           )
-            ? response.options.personTypes
+            ? response.options
+              .personTypes
             : [],
 
         inspectors:
           Array.isArray(
-            response.options.inspectors
+            response.options
+              .inspectors
           )
-            ? response.options.inspectors
+            ? response.options
+              .inspectors
             : [],
 
         busLines:
           Array.isArray(
-            response.options.busLines
+            response.options
+              .busLines
           )
-            ? response.options.busLines
+            ? response.options
+              .busLines
             : [],
 
         checkpoints:
           Array.isArray(
-            response.options.checkpoints
+            response.options
+              .checkpoints
           )
-            ? response.options.checkpoints
+            ? response.options
+              .checkpoints
             : [
               'ป้อมหน้า',
               'ป้อมล่าง'
@@ -916,56 +1238,69 @@
       );
 
       fillOptions();
+
       updatePersonTypeFields();
+
       updateGauge();
 
-      const missingOptions = [];
+      const requiredMissing =
+        [];
+
+      const warnings =
+        [];
 
       if (
         state.options
-          .personTypes.length === 0
+          .personTypes
+          .length === 0
       ) {
-        missingOptions.push(
+        requiredMissing.push(
           'Person type'
         );
       }
 
       if (
         state.options
-          .inspectors.length === 0
+          .inspectors
+          .length === 0
       ) {
-        missingOptions.push(
+        requiredMissing.push(
           'Name'
         );
       }
 
       if (
         state.options
-          .busLines.length === 0
+          .busLines
+          .length === 0
       ) {
-        missingOptions.push(
+        warnings.push(
           'bus line'
         );
       }
 
-      setConnectionStatus(
-        true,
-        'API พร้อม'
-      );
-
       if (
-        missingOptions.length > 0
+        requiredMissing
+          .length > 0
       ) {
+        setConnectionStatus(
+          false,
+          'ข้อมูลไม่ครบ'
+        );
+
         setSystemStatus(
           'เชื่อมต่อสำเร็จ แต่ไม่พบข้อมูลในชีท: ' +
-          missingOptions.join(', '),
+          requiredMissing.join(
+            ', '
+          ),
           'error'
         );
 
         return;
       }
 
-      state.initialized = true;
+      state.initialized =
+        true;
 
       setConnectionStatus(
         true,
@@ -973,8 +1308,15 @@
       );
 
       setSystemStatus(
-        'โหลดตัวเลือกสำเร็จ ระบบพร้อมใช้งาน',
-        'success'
+        warnings.length > 0
+          ? (
+            'ระบบพร้อมใช้งาน แต่ไม่พบข้อมูลในชีท: ' +
+            warnings.join(', ')
+          )
+          : 'โหลดตัวเลือกสำเร็จ ระบบพร้อมใช้งาน',
+        warnings.length > 0
+          ? 'info'
+          : 'success'
       );
 
     } catch (error) {
@@ -989,95 +1331,1586 @@
       );
 
       setSystemStatus(
-        getErrorMessage(error),
+        getErrorMessage(
+          error,
+          'ไม่สามารถโหลดข้อมูลตัวเลือกได้'
+        ),
         'error'
       );
 
     } finally {
-      state.loading = false;
+      state.loading =
+        false;
 
-      setSelectsLoading(false);
+      setSelectsLoading(
+        false
+      );
+
+      updateActionButtons();
     }
   }
 
 
-  function bindEvents() {
-    const personType =
-      getElement('personTypeSelect');
+  /************************************************************
+   * Form Validation
+   ************************************************************/
 
-    const busLine =
-      getElement('busLineSelect');
+  function getSelectedCheckpoint() {
+    const checked =
+      document.querySelector(
+        'input[name="checkpoint"]:checked'
+      );
+
+    return checked
+      ? cleanText(
+        checked.value
+      )
+      : '';
+  }
+
+
+  function validateCoreFields(
+    showMessage
+  ) {
+    const personTypeElement =
+      getElement(
+        'personTypeSelect'
+      );
+
+    const personNameElement =
+      getElement(
+        'personName'
+      );
+
+    const inspectorElement =
+      getElement(
+        'inspectorSelect'
+      );
+
+    const personType =
+      cleanText(
+        personTypeElement &&
+        personTypeElement.value
+      );
+
+    const personName =
+      cleanText(
+        personNameElement &&
+        personNameElement.value
+      );
+
+    const inspector =
+      cleanText(
+        inspectorElement &&
+        inspectorElement.value
+      );
+
+    const checkpoint =
+      getSelectedCheckpoint();
+
+    let message =
+      '';
+
+    let focusElement =
+      null;
+
+    if (!personType) {
+      message =
+        'กรุณาเลือกประเภทบุคคล';
+
+      focusElement =
+        personTypeElement;
+
+    } else if (
+      isOtherOption(
+        personType
+      ) &&
+      !cleanText(
+        getElement(
+          'personTypeOther'
+        ) &&
+        getElement(
+          'personTypeOther'
+        ).value
+      )
+    ) {
+      message =
+        'กรุณาระบุประเภทบุคคลอื่น';
+
+      focusElement =
+        getElement(
+          'personTypeOther'
+        );
+
+    } else if (!personName) {
+      message =
+        'กรุณากรอกชื่อผู้ถูกตรวจ';
+
+      focusElement =
+        personNameElement;
+
+    } else if (
+      isBusType(
+        personType
+      ) &&
+      !cleanText(
+        getElement(
+          'busLineSelect'
+        ) &&
+        getElement(
+          'busLineSelect'
+        ).value
+      )
+    ) {
+      message =
+        'กรุณาเลือกสายรถ';
+
+      focusElement =
+        getElement(
+          'busLineSelect'
+        );
+
+    } else if (
+      isBusType(
+        personType
+      ) &&
+      isOtherOption(
+        getElement(
+          'busLineSelect'
+        ) &&
+        getElement(
+          'busLineSelect'
+        ).value
+      ) &&
+      !cleanText(
+        getElement(
+          'busLineOther'
+        ) &&
+        getElement(
+          'busLineOther'
+        ).value
+      )
+    ) {
+      message =
+        'กรุณาระบุสายรถอื่น';
+
+      focusElement =
+        getElement(
+          'busLineOther'
+        );
+
+    } else if (
+      !isBusType(
+        personType
+      ) &&
+      requiresCompany(
+        personType
+      ) &&
+      !cleanText(
+        getElement(
+          'companyInput'
+        ) &&
+        getElement(
+          'companyInput'
+        ).value
+      )
+    ) {
+      message =
+        'กรุณากรอกชื่อบริษัท';
+
+      focusElement =
+        getElement(
+          'companyInput'
+        );
+
+    } else if (!inspector) {
+      message =
+        'กรุณาเลือกผู้ตรวจวัด';
+
+      focusElement =
+        inspectorElement;
+
+    } else if (!checkpoint) {
+      message =
+        'กรุณาเลือกจุดตรวจ';
+    }
+
+    if (
+      message &&
+      showMessage
+    ) {
+      setSystemStatus(
+        message,
+        'error'
+      );
+
+      window.alert(
+        message
+      );
+
+      if (
+        focusElement &&
+        typeof focusElement
+          .focus ===
+        'function'
+      ) {
+        focusElement.focus();
+      }
+    }
+
+    return {
+      valid:
+        !message,
+
+      message:
+        message
+    };
+  }
+
+
+  function hasDraftActivity() {
+    const measurement =
+      getElement(
+        'measurementInput'
+      );
+
+    return Boolean(
+      state.selectedCapture ||
+      cleanText(
+        measurement &&
+        measurement.value
+      )
+    );
+  }
+
+
+  function isDraftReady() {
+    const measurement =
+      readMeasurement();
+
+    return Boolean(
+      state.selectedCapture &&
+      cleanText(
+        state.selectedCapture
+          .dataUrl
+      ) &&
+      measurement.valid
+    );
+  }
+
+
+  function hasAnyFormData() {
+    const form =
+      getElement(
+        'inspectionForm'
+      );
+
+    if (!form) {
+      return (
+        state.rounds.length > 0 ||
+        Boolean(
+          state.selectedCapture
+        )
+      );
+    }
+
+    const elements =
+      form.querySelectorAll(
+        'input[type="text"], input[type="number"], select'
+      );
+
+    const hasInput =
+      Array.from(
+        elements
+      ).some(
+        function (element) {
+          return (
+            cleanText(
+              element.value
+            ) !== ''
+          );
+        }
+      );
+
+    return (
+      hasInput ||
+      state.rounds.length > 0 ||
+      Boolean(
+        state.selectedCapture
+      )
+    );
+  }
+
+
+  /************************************************************
+   * Button State
+   ************************************************************/
+
+  function updateActionButtons() {
+    const addRoundButton =
+      getElement(
+        'addRoundButton'
+      );
+
+    const saveButton =
+      getElement(
+        'saveButton'
+      );
+
+    const resetButton =
+      getElement(
+        'resetButton'
+      );
+
+    const coreReady =
+      validateCoreFields(
+        false
+      ).valid;
+
+    const draftReady =
+      isDraftReady();
+
+    const hasRoundToSave =
+      state.rounds.length > 0 ||
+      draftReady;
+
+    if (addRoundButton) {
+      addRoundButton.disabled =
+        Boolean(
+          !state.initialized ||
+          state.loading ||
+          state.saving ||
+          !draftReady ||
+          state.rounds.length >=
+          state.config.maxRounds
+        );
+    }
+
+    if (saveButton) {
+      saveButton.disabled =
+        Boolean(
+          !state.initialized ||
+          state.loading ||
+          state.saving ||
+          !coreReady ||
+          !hasRoundToSave
+        );
+
+      saveButton.textContent =
+        state.saving
+          ? 'กำลังบันทึก...'
+          : 'บันทึกข้อมูล';
+    }
+
+    if (resetButton) {
+      resetButton.disabled =
+        Boolean(
+          state.saving ||
+          !hasAnyFormData()
+        );
+    }
+  }
+
+
+  /************************************************************
+   * Round Creation
+   ************************************************************/
+
+  function createRoundFromDraft() {
+    if (
+      !state.selectedCapture ||
+      !cleanText(
+        state.selectedCapture
+          .dataUrl
+      )
+    ) {
+      throw new Error(
+        'กรุณาถ่ายภาพและกด “ใช้ภาพนี้” ก่อน'
+      );
+    }
 
     const measurement =
-      getElement('measurementInput');
+      readMeasurement();
+
+    if (!measurement.valid) {
+      throw new Error(
+        'กรุณากรอกค่าตรวจวัดระหว่าง 0 ถึง 999 Mg%'
+      );
+    }
+
+    const originalImageData =
+      cleanText(
+        state.selectedCapture
+          .dataUrl
+      );
+
+    /*
+     * ในชุดไฟล์ปัจจุบันยังไม่มี Blur Editor
+     * จึงใช้ภาพที่เลือกเป็นทั้งภาพต้นฉบับและภาพสำหรับแสดงผล
+     * เพื่อให้ Backend สามารถบันทึกข้อมูลได้ครบถ้วน
+     */
+    const blurredImageData =
+      cleanText(
+        state.selectedCapture
+          .blurredDataUrl ||
+        state.selectedCapture
+          .blurredImageData ||
+        originalImageData
+      );
+
+    return {
+      valueMg:
+        Number(
+          measurement.value
+            .toFixed(2)
+        ),
+
+      measuredAt:
+        cleanText(
+          state.selectedCapture
+            .capturedAt
+        ) ||
+        new Date()
+          .toISOString(),
+
+      originalImageData:
+        originalImageData,
+
+      blurredImageData:
+        blurredImageData,
+
+      blurAreas:
+        Array.isArray(
+          state.selectedCapture
+            .blurAreas
+        )
+          ? state.selectedCapture
+            .blurAreas
+          : [],
+
+      previewDataUrl:
+        blurredImageData,
+
+      width:
+        Number(
+          state.selectedCapture
+            .width
+        ) ||
+        0,
+
+      height:
+        Number(
+          state.selectedCapture
+            .height
+        ) ||
+        0,
+
+      bytes:
+        Number(
+          state.selectedCapture
+            .bytes
+        ) ||
+        0
+    };
+  }
+
+
+  function clearDraft() {
+    state.selectedCapture =
+      null;
+
+    const measurement =
+      getElement(
+        'measurementInput'
+      );
+
+    if (measurement) {
+      measurement.value =
+        '';
+    }
+
+    if (
+      window.AlcoholCamera &&
+      typeof window
+        .AlcoholCamera
+        .clearPendingCapture ===
+      'function'
+    ) {
+      window.AlcoholCamera
+        .clearPendingCapture();
+    }
+
+    setHidden(
+      'selectedCapturePanel',
+      true
+    );
+
+    updateGauge();
+
+    updateActionButtons();
+  }
+
+
+  function addCurrentRound(
+    showMessage
+  ) {
+    if (
+      state.rounds.length >=
+      state.config.maxRounds
+    ) {
+      const message =
+        'เพิ่มรอบตรวจได้ไม่เกิน ' +
+        state.config.maxRounds +
+        ' รอบ';
+
+      if (showMessage) {
+        window.alert(
+          message
+        );
+      }
+
+      throw new Error(
+        message
+      );
+    }
+
+    const round =
+      createRoundFromDraft();
+
+    state.rounds.push(
+      round
+    );
+
+    renderRounds();
+
+    clearDraft();
+
+    if (showMessage) {
+      setSystemStatus(
+        'เพิ่มรอบตรวจที่ ' +
+        state.rounds.length +
+        ' แล้ว',
+        'success'
+      );
+    }
+
+    return round;
+  }
+
+
+  /************************************************************
+   * Render Round List
+   ************************************************************/
+
+  function renderRounds() {
+    const container =
+      getElement(
+        'roundsList'
+      );
+
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML =
+      '';
+
+    if (
+      state.rounds.length ===
+      0
+    ) {
+      const empty =
+        document.createElement(
+          'div'
+        );
+
+      empty.className =
+        'empty-state';
+
+      empty.textContent =
+        'ยังไม่มีภาพและรอบตรวจที่บันทึก';
+
+      container.appendChild(
+        empty
+      );
+
+      updateActionButtons();
+
+      return;
+    }
+
+    state.rounds.forEach(
+      function (
+        round,
+        index
+      ) {
+        const item =
+          document.createElement(
+            'article'
+          );
+
+        item.className =
+          'round-item';
+
+        item.style.display =
+          'grid';
+
+        item.style
+          .gridTemplateColumns =
+          '72px minmax(0, 1fr) auto';
+
+        item.style.gap =
+          '10px';
+
+        item.style.alignItems =
+          'center';
+
+        item.style.padding =
+          '8px';
+
+        item.style.marginBottom =
+          '7px';
+
+        item.style.border =
+          '1px solid #d6e1e7';
+
+        item.style.borderRadius =
+          '10px';
+
+        item.style.background =
+          '#ffffff';
+
+        const image =
+          document.createElement(
+            'img'
+          );
+
+        image.src =
+          round.previewDataUrl ||
+          round.originalImageData;
+
+        image.alt =
+          'ภาพรอบตรวจที่ ' +
+          (
+            index +
+            1
+          );
+
+        image.style.width =
+          '72px';
+
+        image.style.height =
+          '56px';
+
+        image.style.objectFit =
+          'cover';
+
+        image.style.borderRadius =
+          '8px';
+
+        image.style.background =
+          '#edf3f6';
+
+        const content =
+          document.createElement(
+            'div'
+          );
+
+        content.style.minWidth =
+          '0';
+
+        const title =
+          document.createElement(
+            'strong'
+          );
+
+        title.textContent =
+          'รอบที่ ' +
+          (
+            index +
+            1
+          ) +
+          ' · ' +
+          Number(
+            round.valueMg
+          ).toFixed(2) +
+          ' Mg%';
+
+        title.style.display =
+          'block';
+
+        title.style.fontSize =
+          '12px';
+
+        title.style.color =
+          Number(
+            round.valueMg
+          ) >=
+          state.config
+            .alertThreshold
+            ? '#c40000'
+            : '#16844f';
+
+        const meta =
+          document.createElement(
+            'small'
+          );
+
+        meta.textContent =
+          formatBangkokDateTime(
+            new Date(
+              round.measuredAt
+            )
+          );
+
+        meta.style.display =
+          'block';
+
+        meta.style.marginTop =
+          '3px';
+
+        meta.style.color =
+          '#667985';
+
+        meta.style.fontSize =
+          '10px';
+
+        content.appendChild(
+          title
+        );
+
+        content.appendChild(
+          meta
+        );
+
+        const removeButton =
+          document.createElement(
+            'button'
+          );
+
+        removeButton.type =
+          'button';
+
+        removeButton.textContent =
+          'ลบ';
+
+        removeButton.dataset
+          .roundIndex =
+          String(index);
+
+        removeButton.style
+          .minHeight =
+          '32px';
+
+        removeButton.style.padding =
+          '5px 9px';
+
+        removeButton.style.border =
+          '1px solid #efb1b1';
+
+        removeButton.style
+          .borderRadius =
+          '8px';
+
+        removeButton.style.color =
+          '#c40000';
+
+        removeButton.style.background =
+          '#fff7f7';
+
+        removeButton.disabled =
+          state.saving;
+
+        removeButton
+          .addEventListener(
+            'click',
+            function () {
+              const roundIndex =
+                Number(
+                  removeButton
+                    .dataset
+                    .roundIndex
+                );
+
+              if (
+                !Number.isInteger(
+                  roundIndex
+                )
+              ) {
+                return;
+              }
+
+              state.rounds.splice(
+                roundIndex,
+                1
+              );
+
+              state.activeRequestId =
+                '';
+
+              renderRounds();
+
+              setSystemStatus(
+                'ลบรอบตรวจแล้ว',
+                'info'
+              );
+            }
+          );
+
+        item.appendChild(
+          image
+        );
+
+        item.appendChild(
+          content
+        );
+
+        item.appendChild(
+          removeButton
+        );
+
+        container.appendChild(
+          item
+        );
+      }
+    );
+
+    updateActionButtons();
+  }
+
+
+  /************************************************************
+   * Device ID
+   ************************************************************/
+
+  function getDeviceId() {
+    const storageKey =
+      'alcohol_test_device_id';
+
+    try {
+      let value =
+        cleanText(
+          window.localStorage
+            .getItem(
+              storageKey
+            )
+        );
+
+      if (!value) {
+        value =
+          API &&
+          typeof API
+            .createRequestId ===
+          'function'
+            ? (
+              'DEVICE-' +
+              API.createRequestId()
+            )
+            : (
+              'DEVICE-' +
+              Date.now()
+                .toString(36)
+                .toUpperCase()
+            );
+
+        window.localStorage
+          .setItem(
+            storageKey,
+            value
+          );
+      }
+
+      return value.slice(
+        0,
+        250
+      );
+
+    } catch (error) {
+      return (
+        'DEVICE-' +
+        Date.now()
+          .toString(36)
+          .toUpperCase()
+      );
+    }
+  }
+
+
+  /************************************************************
+   * Build Save Payload
+   ************************************************************/
+
+  function buildPayload() {
+    const personTypeElement =
+      getElement(
+        'personTypeSelect'
+      );
+
+    const companyElement =
+      getElement(
+        'companyInput'
+      );
+
+    const busLineElement =
+      getElement(
+        'busLineSelect'
+      );
+
+    const personNameElement =
+      getElement(
+        'personName'
+      );
+
+    const inspectorElement =
+      getElement(
+        'inspectorSelect'
+      );
+
+    const personType =
+      cleanText(
+        personTypeElement &&
+        personTypeElement.value
+      );
+
+    const busDriver =
+      isBusType(
+        personType
+      );
+
+    const companyOrBusLine =
+      busDriver
+        ? cleanText(
+          busLineElement &&
+          busLineElement.value
+        )
+        : cleanText(
+          companyElement &&
+          companyElement.value
+        );
+
+    return {
+      requestId:
+        state.activeRequestId,
+
+      personType:
+        personType,
+
+      personTypeOther:
+        cleanText(
+          getElement(
+            'personTypeOther'
+          ) &&
+          getElement(
+            'personTypeOther'
+          ).value
+        ),
+
+      personName:
+        cleanText(
+          personNameElement &&
+          personNameElement.value
+        ),
+
+      companyOrBusLine:
+        companyOrBusLine,
+
+      company:
+        busDriver
+          ? ''
+          : companyOrBusLine,
+
+      busLine:
+        busDriver
+          ? companyOrBusLine
+          : '',
+
+      busLineOther:
+        cleanText(
+          getElement(
+            'busLineOther'
+          ) &&
+          getElement(
+            'busLineOther'
+          ).value
+        ),
+
+      checkpoint:
+        getSelectedCheckpoint(),
+
+      inspector:
+        cleanText(
+          inspectorElement &&
+          inspectorElement.value
+        ),
+
+      rounds:
+        state.rounds.map(
+          function (round) {
+            return {
+              valueMg:
+                round.valueMg,
+
+              measuredAt:
+                round.measuredAt,
+
+              originalImageData:
+                round.originalImageData,
+
+              blurredImageData:
+                round.blurredImageData,
+
+              blurAreas:
+                round.blurAreas ||
+                []
+            };
+          }
+        ),
+
+      deviceId:
+        getDeviceId(),
+
+      browser:
+        navigator.userAgent ||
+        ''
+    };
+  }
+
+
+  /************************************************************
+   * Reset Form
+   ************************************************************/
+
+  function resetForm(
+    showStatus
+  ) {
+    const form =
+      getElement(
+        'inspectionForm'
+      );
+
+    if (form) {
+      form.reset();
+    }
+
+    state.rounds =
+      [];
+
+    state.selectedCapture =
+      null;
+
+    state.activeRequestId =
+      '';
+
+    if (
+      window.AlcoholCamera &&
+      typeof window
+        .AlcoholCamera
+        .clearPendingCapture ===
+      'function'
+    ) {
+      window.AlcoholCamera
+        .clearPendingCapture();
+    }
+
+    setHidden(
+      'selectedCapturePanel',
+      true
+    );
+
+    setHidden(
+      'personTypeOtherGroup',
+      true
+    );
+
+    setHidden(
+      'companyGroup',
+      true
+    );
+
+    setHidden(
+      'busLineGroup',
+      true
+    );
+
+    setHidden(
+      'busLineOtherGroup',
+      true
+    );
+
+    renderRounds();
+
+    updatePersonTypeFields();
+
+    updateGauge();
+
+    if (showStatus) {
+      setSystemStatus(
+        'เริ่มรายการใหม่แล้ว',
+        'success'
+      );
+    }
+  }
+
+
+  /************************************************************
+   * Submit / Save
+   ************************************************************/
+
+  async function submitForm(
+    event
+  ) {
+    event.preventDefault();
+
+    if (state.saving) {
+      return;
+    }
+
+    if (
+      !state.initialized
+    ) {
+      window.alert(
+        'ระบบยังไม่พร้อม กรุณากด “โหลดใหม่”'
+      );
+
+      return;
+    }
+
+    if (
+      !validateCoreFields(
+        true
+      ).valid
+    ) {
+      return;
+    }
+
+    /*
+     * ผู้ใช้สามารถกดบันทึกได้ทันที
+     * ระบบจะนำภาพและค่าปัจจุบันสร้างเป็นรอบตรวจให้อัตโนมัติ
+     */
+    if (
+      hasDraftActivity()
+    ) {
+      if (
+        !isDraftReady()
+      ) {
+        window.alert(
+          state.selectedCapture
+            ? 'กรุณากรอกค่าตรวจวัดให้ถูกต้องก่อนบันทึก'
+            : 'กรุณาถ่ายภาพและกด “ใช้ภาพนี้” ก่อนบันทึก'
+        );
+
+        return;
+      }
+
+      try {
+        addCurrentRound(
+          false
+        );
+
+      } catch (error) {
+        window.alert(
+          error.message ||
+          'ไม่สามารถเพิ่มรอบตรวจได้'
+        );
+
+        return;
+      }
+    }
+
+    if (
+      state.rounds.length ===
+      0
+    ) {
+      window.alert(
+        'กรุณาเพิ่มรอบตรวจอย่างน้อยหนึ่งรอบ'
+      );
+
+      return;
+    }
+
+    if (
+      !API ||
+      typeof API.saveRecord !==
+      'function'
+    ) {
+      window.alert(
+        'ไม่พบฟังก์ชันบันทึกข้อมูลใน api.js'
+      );
+
+      return;
+    }
+
+    if (
+      !state.activeRequestId
+    ) {
+      state.activeRequestId =
+        typeof API
+          .createRequestId ===
+        'function'
+          ? API.createRequestId()
+          : (
+            'WEB-' +
+            Date.now()
+              .toString(36)
+              .toUpperCase()
+          );
+    }
+
+    const payload =
+      buildPayload();
+
+    state.saving =
+      true;
+
+    updateActionButtons();
+
+    renderRounds();
+
+    setSystemStatus(
+      'กำลังเตรียมและส่งข้อมูล กรุณารอสักครู่...',
+      'loading'
+    );
+
+    try {
+      const response =
+        await API.saveRecord(
+          payload,
+          {
+            requestId:
+              state.activeRequestId,
+
+            onBeforeSend:
+              function (info) {
+                const megabytes =
+                  Number(
+                    info.payloadBytes ||
+                    0
+                  ) /
+                  (
+                    1024 *
+                    1024
+                  );
+
+                setSystemStatus(
+                  'กำลังบันทึกข้อมูลและภาพ ' +
+                  megabytes.toFixed(2) +
+                  ' MB กรุณารอ...',
+                  'loading'
+                );
+              }
+          }
+        );
+
+      const successMessage =
+        (
+          response &&
+          response.message
+            ? response.message
+            : 'บันทึกข้อมูลสำเร็จ'
+        ) +
+        (
+          response &&
+          response.recordId
+            ? (
+              '\nเลขรายการ: ' +
+              response.recordId
+            )
+            : ''
+        );
+
+      setSystemStatus(
+        response &&
+        response.status ===
+        'DENY'
+          ? 'บันทึกสำเร็จ: ห้ามเข้าพื้นที่ / ห้ามปฏิบัติงาน'
+          : 'บันทึกข้อมูลสำเร็จ',
+        'success'
+      );
+
+      window.alert(
+        successMessage
+      );
+
+      resetForm(
+        false
+      );
+
+    } catch (error) {
+      console.error(
+        'saveRecord error:',
+        error
+      );
+
+      const message =
+        getErrorMessage(
+          error,
+          'บันทึกข้อมูลไม่สำเร็จ'
+        );
+
+      setSystemStatus(
+        message,
+        'error'
+      );
+
+      window.alert(
+        message
+      );
+
+    } finally {
+      state.saving =
+        false;
+
+      updateActionButtons();
+
+      renderRounds();
+    }
+  }
+
+
+  /************************************************************
+   * Events
+   ************************************************************/
+
+  function bindEvents() {
+    const form =
+      getElement(
+        'inspectionForm'
+      );
+
+    const personType =
+      getElement(
+        'personTypeSelect'
+      );
+
+    const busLine =
+      getElement(
+        'busLineSelect'
+      );
+
+    const measurement =
+      getElement(
+        'measurementInput'
+      );
 
     const retryButton =
       getElement(
         'retryConnectionButton'
       );
 
-    if (personType) {
-      personType.addEventListener(
-        'change',
-        updatePersonTypeFields
+    const addRoundButton =
+      getElement(
+        'addRoundButton'
       );
+
+    const resetButton =
+      getElement(
+        'resetButton'
+      );
+
+    if (form) {
+      form.addEventListener(
+        'submit',
+        submitForm
+      );
+
+      form.addEventListener(
+        'input',
+        function () {
+          state.activeRequestId =
+            '';
+
+          updateActionButtons();
+        }
+      );
+
+      form.addEventListener(
+        'change',
+        function () {
+          state.activeRequestId =
+            '';
+
+          updateActionButtons();
+        }
+      );
+    }
+
+    if (personType) {
+      personType
+        .addEventListener(
+          'change',
+          updatePersonTypeFields
+        );
     }
 
     if (busLine) {
-      busLine.addEventListener(
-        'change',
-        updateBusLineOtherField
-      );
+      busLine
+        .addEventListener(
+          'change',
+          updateBusLineOtherField
+        );
     }
 
     if (measurement) {
-      measurement.addEventListener(
-        'input',
-        updateGauge
-      );
+      measurement
+        .addEventListener(
+          'input',
+          updateGauge
+        );
 
-      measurement.addEventListener(
-        'blur',
-        function () {
-          const rawValue =
-            cleanText(
-              measurement.value
-            );
+      measurement
+        .addEventListener(
+          'blur',
+          function () {
+            const rawValue =
+              cleanText(
+                measurement.value
+              );
 
-          /*
-           * ไม่เติม 0.00 ให้อัตโนมัติ
-           */
-          if (rawValue === '') {
+            if (
+              rawValue ===
+              ''
+            ) {
+              updateGauge();
+
+              return;
+            }
+
+            const value =
+              Number(
+                rawValue
+              );
+
+            if (
+              !Number.isFinite(
+                value
+              ) ||
+              value < 0 ||
+              value > 999
+            ) {
+              setSystemStatus(
+                'ค่าตรวจวัดต้องอยู่ระหว่าง 0 ถึง 999 Mg%',
+                'error'
+              );
+
+              updateGauge();
+
+              return;
+            }
+
+            measurement.value =
+              value.toFixed(2);
+
             updateGauge();
-            return;
           }
-
-          const value =
-            normalizeMeasurementValue(
-              rawValue
-            );
-
-          measurement.value =
-            value.toFixed(2);
-
-          updateGauge();
-        }
-      );
+        );
     }
 
     if (retryButton) {
-      retryButton.addEventListener(
-        'click',
-        function () {
-          loadSystemData();
-        }
-      );
+      retryButton
+        .addEventListener(
+          'click',
+          loadSystemData
+        );
     }
+
+    if (addRoundButton) {
+      addRoundButton
+        .addEventListener(
+          'click',
+          function () {
+            try {
+              addCurrentRound(
+                true
+              );
+
+            } catch (error) {
+              window.alert(
+                error.message ||
+                'ไม่สามารถเพิ่มรอบตรวจได้'
+              );
+            }
+          }
+        );
+    }
+
+    if (resetButton) {
+      resetButton
+        .addEventListener(
+          'click',
+          function () {
+            if (
+              hasAnyFormData() &&
+              !window.confirm(
+                'ต้องการล้างข้อมูลและเริ่มรายการใหม่หรือไม่'
+              )
+            ) {
+              return;
+            }
+
+            resetForm(
+              true
+            );
+          }
+        );
+    }
+
+
+    /*
+     * รับภาพจาก camera.js
+     */
+    window.addEventListener(
+      'alcohol:image-captured',
+      function (event) {
+        const image =
+          event &&
+          event.detail
+            ? event.detail.image
+            : null;
+
+        if (
+          !image ||
+          !cleanText(
+            image.dataUrl
+          )
+        ) {
+          return;
+        }
+
+        state.selectedCapture =
+          image;
+
+        state.activeRequestId =
+          '';
+
+        setSystemStatus(
+          'เลือกภาพแล้ว กรอกค่าตรวจวัดและกด “เพิ่มรอบตรวจ” หรือ “บันทึกข้อมูล”',
+          'success'
+        );
+
+        updateActionButtons();
+      }
+    );
+
+
+    window.addEventListener(
+      'alcohol:image-cleared',
+      function () {
+        state.selectedCapture =
+          null;
+
+        state.activeRequestId =
+          '';
+
+        updateActionButtons();
+      }
+    );
+
 
     window.addEventListener(
       'online',
       function () {
-        state.online = true;
+        state.online =
+          true;
 
         setConnectionStatus(
           true,
@@ -1088,10 +2921,12 @@
       }
     );
 
+
     window.addEventListener(
       'offline',
       function () {
-        state.online = false;
+        state.online =
+          false;
 
         setConnectionStatus(
           false,
@@ -1102,15 +2937,27 @@
           'อุปกรณ์ไม่ได้เชื่อมต่ออินเทอร์เน็ต',
           'error'
         );
+
+        updateActionButtons();
       }
     );
   }
 
 
+  /************************************************************
+   * Initialize
+   ************************************************************/
+
   async function initialize() {
     startClock();
+
     bindEvents();
+
+    renderRounds();
+
     updateGauge();
+
+    updateActionButtons();
 
     await loadSystemData();
   }
@@ -1122,15 +2969,34 @@
   );
 
 
+  /************************************************************
+   * Public API
+   ************************************************************/
+
   window.AlcoholApp =
     Object.freeze({
-      state: state,
+      state:
+        state,
 
       reloadOptions:
         loadSystemData,
 
       updateGauge:
         updateGauge,
+
+      addRound:
+        function () {
+          return addCurrentRound(
+            true
+          );
+        },
+
+      reset:
+        function () {
+          resetForm(
+            true
+          );
+        },
 
       formatDateTime:
         formatBangkokDateTime
