@@ -1,8 +1,7 @@
+
 /************************************************************
  * app.js
- * ระบบเริ่มต้นหน้าเว็บและโหลดข้อมูลตัวเลือก
- *
- * รอบนี้ยังไม่รวมการเปิดกล้องและบันทึกภาพ
+ * โหลดตัวเลือก ควบคุมแบบฟอร์ม และ Gauge
  ************************************************************/
 
 (function (window, document) {
@@ -15,14 +14,9 @@
     window.AlcoholAPI;
 
   const state = {
-    initialized:
-      false,
-
-    loading:
-      false,
-
-    online:
-      navigator.onLine,
+    initialized: false,
+    loading: false,
+    online: navigator.onLine,
 
     options: {
       personTypes: [],
@@ -36,19 +30,25 @@
 
     config: {
       alertThreshold:
-        Number(
-          CONFIG.ALERT_THRESHOLD || 1
-        ),
+        Number.isFinite(
+          Number(CONFIG.ALERT_THRESHOLD)
+        )
+          ? Number(CONFIG.ALERT_THRESHOLD)
+          : 1,
 
       gaugeMax:
-        Number(
-          CONFIG.GAUGE_MAX || 50
-        ),
+        Number.isFinite(
+          Number(CONFIG.GAUGE_MAX)
+        )
+          ? Number(CONFIG.GAUGE_MAX)
+          : 50,
 
       maxRounds:
-        Number(
-          CONFIG.MAX_ROUNDS || 5
+        Number.isFinite(
+          Number(CONFIG.MAX_ROUNDS)
         )
+          ? Number(CONFIG.MAX_ROUNDS)
+          : 5
     }
   };
 
@@ -81,7 +81,10 @@
 
     if (element) {
       element.textContent =
-        value || '';
+        value === null ||
+        value === undefined
+          ? ''
+          : String(value);
     }
   }
 
@@ -95,12 +98,10 @@
         ? getElement(elementOrId)
         : elementOrId;
 
-    if (!element) {
-      return;
+    if (element) {
+      element.hidden =
+        Boolean(hidden);
     }
-
-    element.hidden =
-      Boolean(hidden);
   }
 
 
@@ -120,10 +121,10 @@
 
     element.className =
       'system-status ' +
-      (
-        type ||
-        'info'
-      );
+      (type || 'info');
+
+    element.title =
+      message || '';
   }
 
 
@@ -132,9 +133,7 @@
     text
   ) {
     const badge =
-      getElement(
-        'connectionBadge'
-      );
+      getElement('connectionBadge');
 
     if (!badge) {
       return;
@@ -162,9 +161,7 @@
   }
 
 
-  function formatBangkokDateTime(
-    date
-  ) {
+  function formatBangkokDateTime(date) {
     const formatter =
       new Intl.DateTimeFormat(
         'en-GB',
@@ -173,26 +170,15 @@
             CONFIG.TIMEZONE ||
             'Asia/Bangkok',
 
-          day:
-            '2-digit',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
 
-          month:
-            '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
 
-          year:
-            'numeric',
-
-          hour:
-            '2-digit',
-
-          minute:
-            '2-digit',
-
-          second:
-            '2-digit',
-
-          hourCycle:
-            'h23'
+          hourCycle: 'h23'
         }
       );
 
@@ -224,15 +210,23 @@
 
 
   function startClock() {
-    const updateClock =
-      function () {
-        setText(
-          'appDateTime',
-          formatBangkokDateTime(
-            new Date()
-          )
-        );
-      };
+    function updateClock() {
+      const now =
+        new Date();
+
+      const timeElement =
+        getElement('appDateTime');
+
+      if (!timeElement) {
+        return;
+      }
+
+      timeElement.textContent =
+        formatBangkokDateTime(now);
+
+      timeElement.dateTime =
+        now.toISOString();
+    }
 
     updateClock();
 
@@ -240,6 +234,34 @@
       updateClock,
       1000
     );
+  }
+
+
+  function normalizeOptionValue(item) {
+    if (
+      item === null ||
+      item === undefined
+    ) {
+      return '';
+    }
+
+    if (
+      typeof item === 'string' ||
+      typeof item === 'number'
+    ) {
+      return cleanText(item);
+    }
+
+    if (typeof item === 'object') {
+      return cleanText(
+        item.value ||
+        item.name ||
+        item.label ||
+        item.text
+      );
+    }
+
+    return '';
   }
 
 
@@ -251,6 +273,9 @@
     if (!select) {
       return;
     }
+
+    const previousValue =
+      cleanText(select.value);
 
     select.innerHTML = '';
 
@@ -267,48 +292,92 @@
       placeholderOption
     );
 
-    (values || []).forEach(
-      function (value) {
-        const option =
-          document.createElement(
-            'option'
-          );
+    const seen = {};
 
-        option.value =
-          cleanText(value);
+    (Array.isArray(values)
+      ? values
+      : []
+    ).forEach(function (item) {
+      const value =
+        normalizeOptionValue(item);
 
-        option.textContent =
-          cleanText(value);
-
-        select.appendChild(
-          option
-        );
+      if (!value) {
+        return;
       }
-    );
+
+      const key =
+        value.toLowerCase();
+
+      if (seen[key]) {
+        return;
+      }
+
+      seen[key] = true;
+
+      const option =
+        document.createElement(
+          'option'
+        );
+
+      option.value =
+        value;
+
+      option.textContent =
+        value;
+
+      select.appendChild(
+        option
+      );
+    });
+
+    if (
+      previousValue &&
+      Array.from(select.options)
+        .some(function (option) {
+          return (
+            option.value ===
+            previousValue
+          );
+        })
+    ) {
+      select.value =
+        previousValue;
+    }
+  }
+
+
+  function setSelectsLoading(loading) {
+    [
+      'personTypeSelect',
+      'inspectorSelect',
+      'busLineSelect'
+    ].forEach(function (id) {
+      const select =
+        getElement(id);
+
+      if (select) {
+        select.disabled =
+          Boolean(loading);
+      }
+    });
   }
 
 
   function fillOptions() {
     fillSelect(
-      getElement(
-        'personTypeSelect'
-      ),
+      getElement('personTypeSelect'),
       state.options.personTypes,
-      'เลือกประเภท'
+      'เลือกประเภทบุคคล'
     );
 
     fillSelect(
-      getElement(
-        'inspectorSelect'
-      ),
+      getElement('inspectorSelect'),
       state.options.inspectors,
       'เลือกผู้ตรวจวัด'
     );
 
     fillSelect(
-      getElement(
-        'busLineSelect'
-      ),
+      getElement('busLineSelect'),
       state.options.busLines,
       'เลือกสายรถ'
     );
@@ -357,28 +426,27 @@
 
 
   function updatePersonTypeFields() {
+    const personTypeSelect =
+      getElement('personTypeSelect');
+
+    if (!personTypeSelect) {
+      return;
+    }
+
     const personType =
       cleanText(
-        getElement(
-          'personTypeSelect'
-        ).value
+        personTypeSelect.value
       );
 
     const showOtherType =
-      isOtherOption(
-        personType
-      );
+      isOtherOption(personType);
 
     const showBusLine =
-      isBusType(
-        personType
-      );
+      isBusType(personType);
 
     const showCompany =
       !showBusLine &&
-      requiresCompany(
-        personType
-      );
+      requiresCompany(personType);
 
     setHidden(
       'personTypeOtherGroup',
@@ -395,26 +463,40 @@
       !showBusLine
     );
 
-    if (!showOtherType) {
-      getElement(
-        'personTypeOther'
-      ).value = '';
+    const otherTypeInput =
+      getElement('personTypeOther');
+
+    const companyInput =
+      getElement('companyInput');
+
+    const busLineSelect =
+      getElement('busLineSelect');
+
+    const busLineOther =
+      getElement('busLineOther');
+
+    if (
+      !showOtherType &&
+      otherTypeInput
+    ) {
+      otherTypeInput.value = '';
     }
 
-    if (!showCompany) {
-      getElement(
-        'companyInput'
-      ).value = '';
+    if (
+      !showCompany &&
+      companyInput
+    ) {
+      companyInput.value = '';
     }
 
     if (!showBusLine) {
-      getElement(
-        'busLineSelect'
-      ).value = '';
+      if (busLineSelect) {
+        busLineSelect.value = '';
+      }
 
-      getElement(
-        'busLineOther'
-      ).value = '';
+      if (busLineOther) {
+        busLineOther.value = '';
+      }
 
       setHidden(
         'busLineOtherGroup',
@@ -425,13 +507,17 @@
 
 
   function updateBusLineOtherField() {
-    const value =
-      getElement(
-        'busLineSelect'
-      ).value;
+    const select =
+      getElement('busLineSelect');
+
+    if (!select) {
+      return;
+    }
 
     const showOther =
-      isOtherOption(value);
+      isOtherOption(
+        select.value
+      );
 
     setHidden(
       'busLineOtherGroup',
@@ -439,16 +525,17 @@
     );
 
     if (!showOther) {
-      getElement(
-        'busLineOther'
-      ).value = '';
+      const input =
+        getElement('busLineOther');
+
+      if (input) {
+        input.value = '';
+      }
     }
   }
 
 
-  function normalizeMeasurementValue(
-    value
-  ) {
+  function normalizeMeasurementValue(value) {
     const number =
       Number(value);
 
@@ -466,18 +553,19 @@
   }
 
 
-  function getGaugeLevelClass(
-    value
-  ) {
-    if (value <= 1) {
+  function getGaugeLevelClass(value) {
+    /*
+     * ต่ำกว่า 1.00 เท่านั้นที่อยู่ในระดับผ่าน
+     */
+    if (value < 1) {
       return 'level-safe';
     }
 
-    if (value <= 10) {
+    if (value < 10) {
       return 'level-warning';
     }
 
-    if (value <= 25) {
+    if (value < 25) {
       return 'level-orange';
     }
 
@@ -491,21 +579,35 @@
 
   function updateGauge() {
     const input =
-      getElement(
-        'measurementInput'
-      );
+      getElement('measurementInput');
 
+    if (!input) {
+      return;
+    }
+
+    const rawValue =
+      cleanText(input.value);
+
+    const hasValue =
+      rawValue !== '';
+
+    /*
+     * ใช้ 0 สำหรับคำนวณตำแหน่ง Gauge เท่านั้น
+     * ไม่กรอก 0 ให้ผู้ใช้อัตโนมัติ
+     */
     const value =
-      normalizeMeasurementValue(
-        input.value
-      );
+      hasValue
+        ? normalizeMeasurementValue(
+          rawValue
+        )
+        : 0;
 
     const gaugeMaximum =
       Math.max(
         1,
         Number(
           state.config.gaugeMax
-        )
+        ) || 50
       );
 
     const percentage =
@@ -516,8 +618,7 @@
           (
             value /
             gaugeMaximum
-          ) *
-          100
+          ) * 100
         )
       );
 
@@ -525,34 +626,56 @@
       getElement('gaugeMask');
 
     const gaugeIndicator =
-      getElement(
-        'gaugeIndicator'
-      );
+      getElement('gaugeIndicator');
 
+    /*
+     * Gauge แนวนอน
+     */
     if (gaugeMask) {
-      gaugeMask.style.height =
-        (
-          100 -
-          percentage
-        ) +
+      gaugeMask.style.width =
+        (100 - percentage) +
         '%';
+
+      gaugeMask.style.height =
+        '100%';
     }
 
     if (gaugeIndicator) {
-      gaugeIndicator.style.bottom =
+      gaugeIndicator.style.left =
         percentage +
         '%';
+
+      gaugeIndicator.style.bottom =
+        'auto';
     }
 
     setText(
       'gaugeValue',
-      (
-        value >= gaugeMaximum
-          ? gaugeMaximum + '+'
-          : value.toFixed(2)
-      ) +
-      ' Mg%'
+      hasValue
+        ? (
+          value >= gaugeMaximum
+            ? gaugeMaximum + '+ Mg%'
+            : value.toFixed(2) + ' Mg%'
+        )
+        : 'ยังไม่กรอก'
     );
+
+    const threshold =
+      Number(
+        state.config.alertThreshold
+      );
+
+    const finalThreshold =
+      Number.isFinite(threshold)
+        ? threshold
+        : 1;
+
+    /*
+     * ตั้งแต่ 1.00 Mg% ขึ้นไป = DENY
+     */
+    const isDenied =
+      hasValue &&
+      value >= finalThreshold;
 
     const gaugePanel =
       getElement('gaugePanel');
@@ -569,16 +692,15 @@
       gaugePanel.classList.add(
         getGaugeLevelClass(value)
       );
+
+      gaugePanel.classList.toggle(
+        'is-denied',
+        isDenied
+      );
     }
 
     const alertBanner =
       getElement('alertBanner');
-
-    const isDenied =
-      value >
-      Number(
-        state.config.alertThreshold
-      );
 
     if (alertBanner) {
       alertBanner.hidden =
@@ -595,14 +717,98 @@
   }
 
 
+  function applyBackendConfig(config) {
+    if (
+      !config ||
+      typeof config !== 'object'
+    ) {
+      return;
+    }
+
+    const threshold =
+      Number(
+        config.alertThreshold
+      );
+
+    const gaugeMax =
+      Number(
+        config.gaugeMax
+      );
+
+    const maxRounds =
+      Number(
+        config.maxRounds
+      );
+
+    if (
+      Number.isFinite(threshold) &&
+      threshold >= 0
+    ) {
+      state.config.alertThreshold =
+        threshold;
+    }
+
+    if (
+      Number.isFinite(gaugeMax) &&
+      gaugeMax > 0
+    ) {
+      state.config.gaugeMax =
+        gaugeMax;
+    }
+
+    if (
+      Number.isFinite(maxRounds) &&
+      maxRounds > 0
+    ) {
+      state.config.maxRounds =
+        maxRounds;
+    }
+  }
+
+
+  function getErrorMessage(error) {
+    if (!error) {
+      return 'ไม่สามารถโหลดข้อมูลตัวเลือกได้';
+    }
+
+    let message =
+      cleanText(error.message) ||
+      'ไม่สามารถโหลดข้อมูลตัวเลือกได้';
+
+    const code =
+      cleanText(error.code);
+
+    const requestId =
+      cleanText(error.requestId);
+
+    if (code) {
+      message +=
+        ' [' + code + ']';
+    }
+
+    if (requestId) {
+      message +=
+        ' เลขคำขอ: ' +
+        requestId;
+    }
+
+    return message;
+  }
+
+
   async function loadSystemData() {
     if (
       !API ||
       typeof API.getOptions !==
       'function'
     ) {
+      setConnectionStatus(
+        false,
+        'API ไม่พร้อม'
+      );
+
       setSystemStatus(
-        'ไม่พบไฟล์ api.js',
+        'ไม่พบ AlcoholAPI กรุณาตรวจสอบ config.js และ api.js',
         'error'
       );
 
@@ -614,50 +820,168 @@
     }
 
     state.loading = true;
+    state.initialized = false;
 
-    setSystemStatus(
-      'กำลังเชื่อมต่อระบบและโหลดข้อมูล...',
-      'loading'
-    );
+    setSelectsLoading(true);
 
     setConnectionStatus(
       navigator.onLine,
       'กำลังตรวจสอบ'
     );
 
-    const results =
-      await Promise.allSettled([
-        API.health(),
-        API.getOptions()
-      ]);
+    setSystemStatus(
+      'กำลังเชื่อมต่อและโหลดตัวเลือกจาก Google Sheets...',
+      'loading'
+    );
 
-    const healthResult =
-      results[0];
+    try {
+      /*
+       * Health ใช้ตรวจสอบประกอบเท่านั้น
+       * หาก Health มีปัญหายังพยายามโหลด Options ต่อ
+       */
+      try {
+        if (
+          typeof API.health ===
+          'function'
+        ) {
+          await API.health();
+        }
+      } catch (healthError) {
+        console.warn(
+          'Health check failed:',
+          healthError
+        );
+      }
 
-    const optionsResult =
-      results[1];
+      const response =
+        await API.getOptions();
 
-    if (
-      healthResult.status ===
-      'fulfilled'
-    ) {
+      if (
+        !response ||
+        response.ok !== true
+      ) {
+        throw new Error(
+          response &&
+          response.message
+            ? response.message
+            : 'API ส่งผลลัพธ์ไม่สำเร็จ'
+        );
+      }
+
+      if (
+        !response.options ||
+        typeof response.options !==
+        'object'
+      ) {
+        throw new Error(
+          'API ไม่ได้ส่ง options กลับมา'
+        );
+      }
+
+      state.options = {
+        personTypes:
+          Array.isArray(
+            response.options.personTypes
+          )
+            ? response.options.personTypes
+            : [],
+
+        inspectors:
+          Array.isArray(
+            response.options.inspectors
+          )
+            ? response.options.inspectors
+            : [],
+
+        busLines:
+          Array.isArray(
+            response.options.busLines
+          )
+            ? response.options.busLines
+            : [],
+
+        checkpoints:
+          Array.isArray(
+            response.options.checkpoints
+          )
+            ? response.options.checkpoints
+            : [
+              'ป้อมหน้า',
+              'ป้อมล่าง'
+            ]
+      };
+
+      applyBackendConfig(
+        response.config
+      );
+
+      fillOptions();
+      updatePersonTypeFields();
+      updateGauge();
+
+      const missingOptions = [];
+
+      if (
+        state.options
+          .personTypes.length === 0
+      ) {
+        missingOptions.push(
+          'Person type'
+        );
+      }
+
+      if (
+        state.options
+          .inspectors.length === 0
+      ) {
+        missingOptions.push(
+          'Name'
+        );
+      }
+
+      if (
+        state.options
+          .busLines.length === 0
+      ) {
+        missingOptions.push(
+          'bus line'
+        );
+      }
+
+      setConnectionStatus(
+        true,
+        'API พร้อม'
+      );
+
+      if (
+        missingOptions.length > 0
+      ) {
+        setSystemStatus(
+          'เชื่อมต่อสำเร็จ แต่ไม่พบข้อมูลในชีท: ' +
+          missingOptions.join(', '),
+          'error'
+        );
+
+        return;
+      }
+
+      state.initialized = true;
+
       setConnectionStatus(
         true,
         'ระบบพร้อม'
       );
 
-    } else {
-      console.warn(
-        'Health check failed:',
-        healthResult.reason
+      setSystemStatus(
+        'โหลดตัวเลือกสำเร็จ ระบบพร้อมใช้งาน',
+        'success'
       );
-    }
 
-    if (
-      optionsResult.status ===
-      'rejected'
-    ) {
-      state.loading = false;
+    } catch (error) {
+      console.error(
+        'loadSystemData error:',
+        error
+      );
 
       setConnectionStatus(
         false,
@@ -665,108 +989,27 @@
       );
 
       setSystemStatus(
-        optionsResult.reason &&
-        optionsResult.reason.message
-          ? optionsResult.reason.message
-          : 'ไม่สามารถโหลดข้อมูลตัวเลือกได้',
+        getErrorMessage(error),
         'error'
       );
 
-      return;
+    } finally {
+      state.loading = false;
+
+      setSelectsLoading(false);
     }
-
-    const response =
-      optionsResult.value;
-
-    state.options = {
-      personTypes:
-        Array.isArray(
-          response.options &&
-          response.options.personTypes
-        )
-          ? response.options.personTypes
-          : [],
-
-      inspectors:
-        Array.isArray(
-          response.options &&
-          response.options.inspectors
-        )
-          ? response.options.inspectors
-          : [],
-
-      busLines:
-        Array.isArray(
-          response.options &&
-          response.options.busLines
-        )
-          ? response.options.busLines
-          : [],
-
-      checkpoints:
-        Array.isArray(
-          response.options &&
-          response.options.checkpoints
-        )
-          ? response.options.checkpoints
-          : [
-            'ป้อมหน้า',
-            'ป้อมล่าง'
-          ]
-    };
-
-    if (response.config) {
-      state.config.alertThreshold =
-        Number(
-          response.config
-            .alertThreshold
-        ) || 1;
-
-      state.config.gaugeMax =
-        Number(
-          response.config.gaugeMax
-        ) || 50;
-
-      state.config.maxRounds =
-        Number(
-          response.config.maxRounds
-        ) || 5;
-    }
-
-    fillOptions();
-    updatePersonTypeFields();
-    updateGauge();
-
-    setSystemStatus(
-      'โหลดข้อมูลสำเร็จ ระบบพร้อมเตรียมเปิดกล้อง',
-      'success'
-    );
-
-    setConnectionStatus(
-      true,
-      'ระบบพร้อม'
-    );
-
-    state.loading = false;
-    state.initialized = true;
   }
 
 
   function bindEvents() {
     const personType =
-      getElement(
-        'personTypeSelect'
-      );
+      getElement('personTypeSelect');
 
     const busLine =
-      getElement(
-        'busLineSelect'
-      );
+      getElement('busLineSelect');
 
     const measurement =
-      getElement(
-        'measurementInput'
-      );
+      getElement('measurementInput');
 
     const retryButton =
       getElement(
@@ -796,14 +1039,22 @@
       measurement.addEventListener(
         'blur',
         function () {
-          if (!measurement.value) {
-            measurement.value =
-              '0.00';
+          const rawValue =
+            cleanText(
+              measurement.value
+            );
+
+          /*
+           * ไม่เติม 0.00 ให้อัตโนมัติ
+           */
+          if (rawValue === '') {
+            updateGauge();
+            return;
           }
 
           const value =
             normalizeMeasurementValue(
-              measurement.value
+              rawValue
             );
 
           measurement.value =
@@ -817,7 +1068,9 @@
     if (retryButton) {
       retryButton.addEventListener(
         'click',
-        loadSystemData
+        function () {
+          loadSystemData();
+        }
       );
     }
 
@@ -871,14 +1124,17 @@
 
   window.AlcoholApp =
     Object.freeze({
-      state:
-        state,
+      state: state,
 
       reloadOptions:
         loadSystemData,
+
+      updateGauge:
+        updateGauge,
 
       formatDateTime:
         formatBangkokDateTime
     });
 
 })(window, document);
+
