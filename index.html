@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
+  <meta
+    name="theme-color"
+    content="#102f46"
+  >
+
+  <meta
+    name="description"
+    content="ระบบบันทึกการตรวจวัดปริมาณแอลกอฮอล์ก่อนเข้าพื้นที่คลังสินค้า"
+  >
+
+  <title>
+    ระบบตรวจวัดปริมาณแอลกอฮอล์
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="styles.css"
+  >
+</head>
+
+<body>
+
+  <div class="app-shell">
+
+    <!-- แถบด้านบน -->
+    <header class="topbar">
+
+      <div class="topbar-title">
+        <span class="app-icon">
+          %
+        </span>
+
+        <div>
+          <h1>
+            ตรวจวัดแอลกอฮอล์
+          </h1>
+
+          <p>
+            ก่อนเข้าพื้นที่คลังสินค้า
+          </p>
+        </div>
+      </div>
+
+      <div class="topbar-info">
+
+        <time
+          id="appDateTime"
+          class="datetime"
+        >
+          --/--/---- --:--:--
+        </time>
+
+        <span
+          id="connectionBadge"
+          class="connection-badge is-offline"
+        >
+          กำลังตรวจสอบ
+        </span>
+
+      </div>
+
+    </header>
+
+
+    <!-- สถานะระบบ -->
+    <section class="status-section">
+
+      <div
+        id="systemStatus"
+        class="system-status loading"
+        role="status"
+        aria-live="polite"
+      >
+        กำลังเชื่อมต่อระบบ...
+      </div>
+
+      <button
+        id="retryConnectionButton"
+        class="small-button"
+        type="button"
+      >
+        โหลดข้อมูลใหม่
+      </button>
+
+    </section>
+
+
+    <!-- แถบเตือนเมื่อเกิน 1 Mg% -->
+    <section
+      id="alertBanner"
+      class="alert-banner"
+      role="alert"
+      hidden
+    >
+
+      <div class="alert-symbol">
+        !
+      </div>
+
+      <div class="alert-content">
+        <strong>
+          ห้ามเข้าพื้นที่ / ห้ามปฏิบัติงาน
+        </strong>
+
+        <span>
+          ตรวจพบค่า
+          <b id="alertMeasurementValue">
+            0.00 Mg%
+          </b>
+          มากกว่าเกณฑ์ที่กำหนด
+        </span>
+      </div>
+
+    </section>
+
+
+    <main class="main-content">
+
+      <form
+        id="inspectionForm"
+        autocomplete="off"
+        novalidate
+      >
+
+        <!-- กล้องและแถบด้านข้าง -->
+        <section class="camera-workspace">
+
+          <!-- แถบซ้าย -->
+          <aside class="person-panel">
+
+            <div class="compact-field">
+              <label for="personTypeSelect">
+                ประเภท
+              </label>
+
+              <select
+                id="personTypeSelect"
+                required
+              >
+                <option value="">
+                  กำลังโหลด...
+                </option>
+              </select>
+            </div>
+
+
+            <div
+              id="personTypeOtherGroup"
+              class="compact-field"
+              hidden
+            >
+              <label for="personTypeOther">
+                ระบุประเภท
+              </label>
+
+              <input
+                id="personTypeOther"
+                type="text"
+                maxlength="100"
+                placeholder="ประเภทอื่น"
+              >
+            </div>
+
+
+            <div class="compact-field">
+              <label for="personName">
+                ชื่อผู้ถูกตรวจ
+              </label>
+
+              <input
+                id="personName"
+                type="text"
+                maxlength="200"
+                placeholder="ชื่อ-นามสกุล"
+                required
+              >
+            </div>
+
+
+            <div
+              id="companyGroup"
+              class="compact-field"
+              hidden
+            >
+              <label for="companyInput">
+                ชื่อบริษัท
+              </label>
+
+              <input
+                id="companyInput"
+                type="text"
+                maxlength="200"
+                placeholder="บริษัท"
+              >
+            </div>
+
+
+            <div
+              id="busLineGroup"
+              class="compact-field"
+              hidden
+            >
+              <label for="busLineSelect">
+                สายรถ
+              </label>
+
+              <select id="busLineSelect">
+                <option value="">
+                  เลือกสายรถ
+                </option>
+              </select>
+            </div>
+
+
+            <div
+              id="busLineOtherGroup"
+              class="compact-field"
+              hidden
+            >
+              <label for="busLineOther">
+                สายรถอื่น
+              </label>
+
+              <input
+                id="busLineOther"
+                type="text"
+                maxlength="150"
+                placeholder="ระบุสายรถ"
+              >
+            </div>
+
+          </aside>
+
+
+          <!-- พื้นที่กล้องหลัก -->
+          <section
+            id="cameraStage"
+            class="camera-stage"
+          >
+
+            <video
+              id="cameraVideo"
+              autoplay
+              muted
+              playsinline
+            ></video>
+
+            <canvas
+              id="captureCanvas"
+              hidden
+            ></canvas>
+
+            <div
+              id="cameraPlaceholder"
+              class="camera-placeholder"
+            >
+              <div class="camera-placeholder-icon">
+                ◉
+              </div>
+
+              <strong>
+                พื้นที่กล้อง
+              </strong>
+
+              <span>
+                ระบบเปิดกล้องอัตโนมัติจะเพิ่มในรอบถัดไป
+              </span>
+            </div>
+
+
+            <div
+              id="blurOverlay"
+              class="blur-overlay"
+              aria-hidden="true"
+            ></div>
+
+
+            <div class="camera-toolbar">
+
+              <button
+                id="openCameraButton"
+                class="camera-button secondary"
+                type="button"
+                disabled
+              >
+                เปิดกล้อง
+              </button>
+
+              <button
+                id="captureButton"
+                class="capture-button"
+                type="button"
+                disabled
+                aria-label="ถ่ายภาพ"
+              >
+                <span></span>
+              </button>
+
+              <button
+                id="switchCameraButton"
+                class="camera-button secondary"
+                type="button"
+                disabled
+              >
+                สลับกล้อง
+              </button>
+
+            </div>
+
+          </section>
+
+
+          <!-- แถบวัดด้านขวา -->
+          <aside
+            id="gaugePanel"
+            class="gauge-panel level-safe"
+          >
+
+            <div
+              id="gaugeValue"
+              class="gauge-value"
+            >
+              0.00 Mg%
+            </div>
+
+            <div class="gauge-scale">
+
+              <span class="scale-number scale-50">
+                50+
+              </span>
+
+              <span class="scale-number scale-25">
+                25
+              </span>
+
+              <span class="scale-number scale-10">
+                10
+              </span>
+
+              <span class="scale-number scale-1">
+                1
+              </span>
+
+              <span class="scale-number scale-0">
+                0
+              </span>
+
+
+              <div class="gauge-track">
+
+                <div class="gauge-gradient"></div>
+
+                <div
+                  id="gaugeMask"
+                  class="gauge-mask"
+                ></div>
+
+                <div
+                  id="gaugeIndicator"
+                  class="gauge-indicator"
+                ></div>
+
+              </div>
+
+            </div>
+
+            <div class="gauge-unit">
+              Mg%
+            </div>
+
+          </aside>
+
+        </section>
+
+
+        <!-- ข้อมูลการตรวจ -->
+        <section class="form-card">
+
+          <div class="form-grid">
+
+            <div class="field-group">
+              <label for="inspectorSelect">
+                ผู้ตรวจวัด
+              </label>
+
+              <select
+                id="inspectorSelect"
+                required
+              >
+                <option value="">
+                  กำลังโหลด...
+                </option>
+              </select>
+            </div>
+
+
+            <fieldset class="field-group checkpoint-group">
+
+              <legend>
+                จุดตรวจ
+              </legend>
+
+              <div class="segmented-control">
+
+                <label>
+                  <input
+                    type="radio"
+                    name="checkpoint"
+                    value="ป้อมหน้า"
+                    checked
+                  >
+
+                  <span>
+                    ป้อมหน้า
+                  </span>
+                </label>
+
+                <label>
+                  <input
+                    type="radio"
+                    name="checkpoint"
+                    value="ป้อมล่าง"
+                  >
+
+                  <span>
+                    ป้อมล่าง
+                  </span>
+                </label>
+
+              </div>
+
+            </fieldset>
+
+
+            <div class="field-group measurement-group">
+
+              <label for="measurementInput">
+                ปริมาณที่ตรวจวัดได้
+              </label>
+
+              <div class="measurement-input-wrap">
+
+                <input
+                  id="measurementInput"
+                  type="number"
+                  inputmode="decimal"
+                  min="0"
+                  max="999"
+                  step="0.01"
+                  value="0.00"
+                  required
+                >
+
+                <span>
+                  Mg%
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- รายการรอบตรวจ -->
+        <section class="round-card">
+
+          <div class="section-heading">
+
+            <div>
+              <h2>
+                รอบการตรวจวัด
+              </h2>
+
+              <p>
+                หนึ่งรอบต้องมีค่าตรวจวัดและภาพหลักฐาน
+              </p>
+            </div>
+
+            <button
+              id="addRoundButton"
+              class="outline-button"
+              type="button"
+              disabled
+            >
+              + เพิ่มรอบตรวจ
+            </button>
+
+          </div>
+
+
+          <div
+            id="roundsList"
+            class="rounds-list"
+          >
+
+            <div class="empty-state">
+              ยังไม่มีภาพและรอบตรวจที่บันทึก
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- ปุ่มบันทึก -->
+        <section class="action-bar">
+
+          <button
+            id="resetButton"
+            class="secondary-action"
+            type="button"
+            disabled
+          >
+            เริ่มรายการใหม่
+          </button>
+
+          <button
+            id="saveButton"
+            class="primary-action"
+            type="submit"
+            disabled
+          >
+            บันทึกข้อมูล
+          </button>
+
+        </section>
+
+      </form>
+
+    </main>
+
+  </div>
+
+
+  <script src="config.js"></script>
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>
