@@ -1880,3 +1880,555 @@ span {
       34px;
   }
 }
+/************************************************************
+ * Camera Status
+ ************************************************************/
+
+.camera-status {
+  position:
+    absolute;
+
+  top:
+    8px;
+
+  left:
+    50%;
+
+  z-index:
+    12;
+
+  max-width:
+    calc(100% - 20px);
+
+  padding:
+    6px 10px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.22);
+
+  border-radius:
+    999px;
+
+  color:
+    #ffffff;
+
+  background:
+    rgba(0, 0, 0, 0.58);
+
+  font-size:
+    10px;
+
+  font-weight:
+    700;
+
+  text-align:
+    center;
+
+  transform:
+    translateX(-50%);
+
+  backdrop-filter:
+    blur(8px);
+
+  pointer-events:
+    none;
+}
+
+
+.camera-status.success {
+  background:
+    rgba(16, 126, 70, 0.86);
+}
+
+
+.camera-status.error {
+  background:
+    rgba(190, 20, 20, 0.90);
+}
+
+
+.camera-status.loading {
+  background:
+    rgba(152, 109, 0, 0.88);
+}
+
+
+.camera-status.info {
+  background:
+    rgba(12, 64, 96, 0.88);
+}
+
+
+.camera-toolbar {
+  flex-wrap:
+    wrap;
+}
+
+
+.file-input-hidden {
+  position:
+    absolute;
+
+  width:
+    1px;
+
+  height:
+    1px;
+
+  overflow:
+    hidden;
+
+  opacity:
+    0;
+
+  pointer-events:
+    none;
+}
+
+
+/************************************************************
+ * Selected Capture
+ ************************************************************/
+
+.selected-capture-panel {
+  display:
+    grid;
+
+  grid-template-columns:
+    82px
+    minmax(0, 1fr)
+    auto;
+
+  align-items:
+    center;
+
+  gap:
+    9px;
+
+  margin-top:
+    8px;
+
+  padding:
+    8px;
+
+  border:
+    1px solid
+    #b8d8c5;
+
+  border-radius:
+    14px;
+
+  background:
+    #f2fbf6;
+
+  box-shadow:
+    var(--shadow);
+}
+
+
+.selected-capture-image-wrap {
+  overflow:
+    hidden;
+
+  width:
+    82px;
+
+  height:
+    64px;
+
+  border-radius:
+    10px;
+
+  background:
+    #101820;
+}
+
+
+.selected-capture-image-wrap img {
+  display:
+    block;
+
+  width:
+    100%;
+
+  height:
+    100%;
+
+  object-fit:
+    cover;
+}
+
+
+.selected-capture-content {
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  min-width:
+    0;
+
+  gap:
+    2px;
+}
+
+
+.selected-capture-content strong {
+  color:
+    #12643c;
+
+  font-size:
+    12px;
+}
+
+
+.selected-capture-content span {
+  color:
+    var(--text);
+
+  font-size:
+    11px;
+
+  font-weight:
+    700;
+}
+
+
+.selected-capture-content small {
+  overflow:
+    hidden;
+
+  color:
+    var(--muted);
+
+  font-size:
+    9px;
+
+  text-overflow:
+    ellipsis;
+
+  white-space:
+    nowrap;
+}
+
+
+.remove-capture-button {
+  min-height:
+    34px;
+
+  padding:
+    6px 9px;
+
+  border:
+    1px solid
+    #df9b9b;
+
+  border-radius:
+    9px;
+
+  color:
+    #b00020;
+
+  background:
+    #ffffff;
+
+  font-size:
+    10px;
+
+  font-weight:
+    750;
+}
+
+
+/************************************************************
+ * Capture Preview Modal
+ ************************************************************/
+
+body.modal-open {
+  overflow:
+    hidden;
+}
+
+
+.capture-preview-modal {
+  position:
+    fixed;
+
+  inset:
+    0;
+
+  z-index:
+    9999;
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  padding:
+    12px;
+
+  background:
+    rgba(0, 0, 0, 0.82);
+
+  backdrop-filter:
+    blur(5px);
+}
+
+
+.capture-preview-card {
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  overflow:
+    hidden;
+
+  width:
+    min(100%, 720px);
+
+  max-height:
+    calc(100vh - 24px);
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.18);
+
+  border-radius:
+    18px;
+
+  background:
+    #ffffff;
+
+  box-shadow:
+    0 24px 70px
+    rgba(0, 0, 0, 0.42);
+}
+
+
+.capture-preview-header {
+  padding:
+    11px 13px;
+
+  border-bottom:
+    1px solid
+    var(--border);
+}
+
+
+.capture-preview-header h2 {
+  margin:
+    0;
+
+  color:
+    var(--primary);
+
+  font-size:
+    16px;
+}
+
+
+.capture-preview-header p {
+  margin:
+    3px 0 0;
+
+  color:
+    var(--muted);
+
+  font-size:
+    10px;
+}
+
+
+.capture-preview-body {
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  overflow:
+    hidden;
+
+  flex:
+    1;
+
+  min-height:
+    220px;
+
+  max-height:
+    68vh;
+
+  padding:
+    7px;
+
+  background:
+    #060b0f;
+}
+
+
+.capture-preview-body img {
+  display:
+    block;
+
+  max-width:
+    100%;
+
+  max-height:
+    66vh;
+
+  object-fit:
+    contain;
+}
+
+
+.capture-preview-meta {
+  padding:
+    6px 12px;
+
+  color:
+    var(--muted);
+
+  background:
+    var(--surface-soft);
+
+  font-size:
+    10px;
+
+  font-weight:
+    700;
+
+  text-align:
+    center;
+}
+
+
+.capture-preview-actions {
+  display:
+    grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap:
+    8px;
+
+  padding:
+    10px;
+}
+
+
+.preview-secondary-button,
+.preview-primary-button {
+  min-height:
+    46px;
+
+  border-radius:
+    11px;
+
+  font-size:
+    13px;
+
+  font-weight:
+    800;
+}
+
+
+.preview-secondary-button {
+  border:
+    1px solid
+    var(--border);
+
+  color:
+    var(--primary);
+
+  background:
+    #ffffff;
+}
+
+
+.preview-primary-button {
+  border:
+    0;
+
+  color:
+    #ffffff;
+
+  background:
+    linear-gradient(
+      135deg,
+      #178451,
+      #0b653b
+    );
+}
+
+
+@media (max-width: 430px) {
+
+  .camera-toolbar {
+    gap:
+      5px;
+  }
+
+  .camera-button {
+    min-height:
+      30px;
+
+    padding:
+      4px 7px;
+
+    font-size:
+      9px;
+  }
+
+  .capture-button {
+    flex-basis:
+      48px;
+
+    width:
+      48px;
+
+    height:
+      48px;
+  }
+
+  .selected-capture-panel {
+    grid-template-columns:
+      68px
+      minmax(0, 1fr)
+      auto;
+  }
+
+  .selected-capture-image-wrap {
+    width:
+      68px;
+
+    height:
+      58px;
+  }
+
+  .capture-preview-modal {
+    padding:
+      7px;
+  }
+
+  .capture-preview-card {
+    max-height:
+      calc(100vh - 14px);
+
+    border-radius:
+      14px;
+  }
+
+}
