@@ -1,172 +1,157 @@
+
 /************************************************************
  * styles.css
- * Mobile First UI
+ * Alcohol Test Application
+ * Mobile First / Camera Focused
  ************************************************************/
 
 :root {
-  --bg:
-    #eef3f6;
+  --bg: #edf3f6;
+  --surface: #ffffff;
+  --surface-soft: #f5f8fa;
 
-  --surface:
-    #ffffff;
+  --primary: #123f5b;
+  --primary-dark: #092d43;
+  --primary-light: #e4f1f7;
 
-  --surface-soft:
-    #f6f9fb;
+  --text: #16242d;
+  --muted: #667985;
+  --border: #d6e1e7;
 
-  --primary:
-    #123f5b;
-
-  --primary-dark:
-    #0b2d42;
-
-  --primary-light:
-    #e5f1f7;
-
-  --text:
-    #16242d;
-
-  --muted:
-    #647781;
-
-  --border:
-    #d7e1e6;
-
-  --success:
-    #198754;
-
-  --warning:
-    #e6a700;
-
-  --orange:
-    #ef6c00;
-
-  --danger:
-    #d62828;
-
-  --critical:
-    #ff1010;
+  --success: #16844f;
+  --warning: #f0c400;
+  --orange: #ef7600;
+  --danger: #d62929;
+  --critical: #ff0000;
 
   --shadow:
-    0 8px 24px rgba(18, 63, 91, 0.10);
+    0 8px 24px rgba(16, 56, 80, 0.10);
 
-  --radius:
-    16px;
+  --shadow-strong:
+    0 16px 40px rgba(9, 45, 67, 0.18);
+
+  --radius: 14px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 
-* {
-  box-sizing:
-    border-box;
+/************************************************************
+ * Reset
+ ************************************************************/
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 
 html {
-  min-height:
-    100%;
-
-  background:
-    var(--bg);
+  min-width: 320px;
+  min-height: 100%;
+  background: var(--bg);
+  scroll-behavior: smooth;
 }
 
 
 body {
-  margin:
-    0;
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
 
-  min-width:
-    320px;
-
-  min-height:
-    100vh;
-
-  color:
-    var(--text);
-
-  background:
-    var(--bg);
+  color: var(--text);
+  background: var(--bg);
 
   font-family:
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
+    "Noto Sans Thai",
     sans-serif;
 
-  -webkit-font-smoothing:
-    antialiased;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 
 button,
 input,
 select {
-  font:
-    inherit;
+  font: inherit;
 }
 
 
 button {
-  touch-action:
-    manipulation;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+
+button:not(:disabled) {
+  cursor: pointer;
 }
 
 
 button:disabled {
-  cursor:
-    not-allowed;
+  cursor: not-allowed;
+  opacity: 0.48;
+}
 
-  opacity:
-    0.48;
+
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+
+img,
+video,
+canvas {
+  max-width: 100%;
 }
 
 
 [hidden] {
-  display:
-    none !important;
+  display: none !important;
 }
 
+
+/************************************************************
+ * Application Shell
+ ************************************************************/
 
 .app-shell {
-  min-height:
-    100vh;
-
-  padding-bottom:
-    env(safe-area-inset-bottom);
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: var(--safe-bottom);
 }
 
 
+/************************************************************
+ * Top Bar
+ ************************************************************/
+
 .topbar {
-  position:
-    sticky;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 
-  top:
-    0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 
-  z-index:
-    50;
-
-  display:
-    flex;
-
-  align-items:
-    center;
-
-  justify-content:
-    space-between;
-
-  gap:
-    12px;
-
-  min-height:
-    64px;
+  min-height: 58px;
 
   padding:
-    calc(8px + env(safe-area-inset-top))
-    12px
-    8px;
+    calc(7px + env(safe-area-inset-top, 0px))
+    9px
+    7px;
 
-  color:
-    #ffffff;
+  color: #ffffff;
 
   background:
     linear-gradient(
@@ -176,1573 +161,1346 @@ button:disabled {
     );
 
   box-shadow:
-    0 4px 18px
-    rgba(7, 39, 58, 0.22);
+    0 4px 16px rgba(7, 38, 56, 0.22);
 }
 
 
 .topbar-title {
-  display:
-    flex;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 
-  align-items:
-    center;
-
-  min-width:
-    0;
-
-  gap:
-    9px;
+  min-width: 0;
 }
 
 
 .app-icon {
-  display:
-    grid;
+  display: grid;
+  place-items: center;
 
-  place-items:
-    center;
+  flex: 0 0 36px;
 
-  flex:
-    0 0 38px;
+  width: 36px;
+  height: 36px;
 
-  width:
-    38px;
+  border: 2px solid rgba(255, 255, 255, 0.88);
+  border-radius: 10px;
 
-  height:
-    38px;
+  font-size: 19px;
+  font-weight: 900;
+}
 
-  border:
-    2px solid
-    rgba(255, 255, 255, 0.86);
 
-  border-radius:
-    12px;
-
-  font-size:
-    20px;
-
-  font-weight:
-    800;
+.topbar-title > div {
+  min-width: 0;
 }
 
 
 .topbar h1 {
-  margin:
-    0;
+  margin: 0;
 
-  overflow:
-    hidden;
+  overflow: hidden;
 
-  font-size:
-    15px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.2;
 
-  line-height:
-    1.25;
-
-  text-overflow:
-    ellipsis;
-
-  white-space:
-    nowrap;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 
 .topbar p {
-  margin:
-    2px 0 0;
+  margin: 2px 0 0;
 
-  color:
-    rgba(255, 255, 255, 0.74);
+  overflow: hidden;
 
-  font-size:
-    11px;
+  color: rgba(255, 255, 255, 0.74);
+
+  font-size: 9px;
+  line-height: 1.2;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 
 .topbar-info {
-  display:
-    flex;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
 
-  flex-direction:
-    column;
-
-  align-items:
-    flex-end;
-
-  flex:
-    0 0 auto;
-
-  gap:
-    4px;
+  flex: 0 0 auto;
 }
 
 
 .datetime {
-  font-size:
-    11px;
+  color: #ffffff;
 
-  font-weight:
-    700;
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 1.2;
 
-  white-space:
-    nowrap;
+  white-space: nowrap;
 }
 
 
 .connection-badge {
-  display:
-    inline-flex;
+  display: inline-flex;
+  align-items: center;
 
-  align-items:
-    center;
+  min-height: 18px;
 
-  min-height:
-    20px;
+  padding: 2px 7px;
 
-  padding:
-    2px 8px;
+  border-radius: 999px;
 
-  border-radius:
-    999px;
+  background: rgba(255, 255, 255, 0.14);
 
-  font-size:
-    10px;
-
-  font-weight:
-    700;
-
-  background:
-    rgba(255, 255, 255, 0.15);
+  font-size: 8px;
+  font-weight: 750;
+  line-height: 1;
 }
 
 
 .connection-badge::before {
-  width:
-    7px;
+  width: 6px;
+  height: 6px;
 
-  height:
-    7px;
+  margin-right: 4px;
 
-  margin-right:
-    5px;
+  border-radius: 50%;
 
-  border-radius:
-    50%;
+  background: currentColor;
 
-  background:
-    currentColor;
-
-  content:
-    "";
+  content: "";
 }
 
 
 .connection-badge.is-online {
-  color:
-    #9cffc8;
+  color: #8fffc0;
 }
 
 
 .connection-badge.is-offline {
-  color:
-    #ffd1d1;
+  color: #ffc5c5;
 }
 
 
+/************************************************************
+ * System Status
+ ************************************************************/
+
 .status-section {
-  display:
-    flex;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
 
-  align-items:
-    center;
+  min-height: 38px;
 
-  justify-content:
-    space-between;
+  padding: 5px 8px;
 
-  gap:
-    8px;
+  border-bottom: 1px solid var(--border);
 
-  padding:
-    8px 10px;
-
-  border-bottom:
-    1px solid
-    var(--border);
-
-  background:
-    var(--surface);
+  background: var(--surface);
 }
 
 
 .system-status {
-  flex:
-    1;
+  flex: 1;
+  min-width: 0;
 
-  font-size:
-    12px;
+  overflow: hidden;
 
-  font-weight:
-    600;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.3;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 
 .system-status.loading {
-  color:
-    #7b6400;
+  color: #876d00;
 }
 
 
 .system-status.success {
-  color:
-    var(--success);
+  color: var(--success);
 }
 
 
 .system-status.error {
-  color:
-    var(--danger);
+  color: var(--danger);
 }
 
 
 .system-status.info {
-  color:
-    var(--primary);
+  color: var(--primary);
 }
 
 
 .small-button {
-  min-height:
-    30px;
+  flex: 0 0 auto;
 
-  padding:
-    5px 10px;
+  min-height: 28px;
 
-  border:
-    1px solid
-    var(--border);
+  padding: 4px 8px;
 
-  border-radius:
-    9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
 
-  color:
-    var(--primary);
+  color: var(--primary);
+  background: var(--surface-soft);
 
-  background:
-    var(--surface-soft);
-
-  font-size:
-    11px;
-
-  font-weight:
-    700;
+  font-size: 9px;
+  font-weight: 750;
 }
 
 
+/************************************************************
+ * Alert Banner
+ ************************************************************/
+
 .alert-banner {
-  position:
-    sticky;
+  position: sticky;
+  top: 58px;
+  z-index: 90;
 
-  top:
-    64px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 
-  z-index:
-    45;
+  margin: 6px;
+  padding: 8px 10px;
 
-  display:
-    flex;
+  border: 2px solid #ff8b8b;
+  border-radius: 11px;
 
-  align-items:
-    center;
-
-  gap:
-    10px;
-
-  margin:
-    8px;
-
-  padding:
-    10px 12px;
-
-  border:
-    2px solid
-    #ff8282;
-
-  border-radius:
-    13px;
-
-  color:
-    #ffffff;
+  color: #ffffff;
 
   background:
     linear-gradient(
       135deg,
-      #b90000,
+      #ad0000,
       #f00000
     );
 
   box-shadow:
-    0 6px 20px
-    rgba(215, 0, 0, 0.28);
+    0 6px 18px rgba(210, 0, 0, 0.25);
 
-  animation:
-    alertPulse 1.5s
-    infinite;
+  animation: alertPulse 1.5s infinite;
 }
 
 
 .alert-symbol {
-  display:
-    grid;
+  display: grid;
+  place-items: center;
 
-  place-items:
-    center;
+  flex: 0 0 28px;
 
-  flex:
-    0 0 32px;
+  width: 28px;
+  height: 28px;
 
-  width:
-    32px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
 
-  height:
-    32px;
-
-  border:
-    2px solid #ffffff;
-
-  border-radius:
-    50%;
-
-  font-size:
-    22px;
-
-  font-weight:
-    900;
+  font-size: 19px;
+  font-weight: 900;
 }
 
 
 .alert-content {
-  display:
-    flex;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 
-  flex-direction:
-    column;
+  min-width: 0;
 
-  gap:
-    2px;
-
-  font-size:
-    12px;
+  font-size: 10px;
+  line-height: 1.3;
 }
 
 
 .alert-content strong {
-  font-size:
-    14px;
+  font-size: 12px;
 }
 
 
 @keyframes alertPulse {
   0%,
   100% {
-    transform:
-      scale(1);
+    transform: scale(1);
   }
 
   50% {
-    transform:
-      scale(1.01);
+    transform: scale(1.008);
   }
 }
 
 
+/************************************************************
+ * Main Content
+ ************************************************************/
+
 .main-content {
-  width:
-    100%;
+  width: 100%;
+  max-width: 1180px;
 
-  max-width:
-    1280px;
-
-  margin:
-    0 auto;
-
-  padding:
-    8px;
+  margin: 0 auto;
+  padding: 6px;
 }
 
+
+/************************************************************
+ * Camera Workspace
+ *
+ * Mobile:
+ * ┌───────────────────────┐
+ * │ Person Information    │
+ * ├──────────────────┬────┤
+ * │ Camera           │Gauge│
+ * └──────────────────┴────┘
+ ************************************************************/
 
 .camera-workspace {
-  display:
-    grid;
+  display: grid;
+
+  grid-template-areas:
+    "person person"
+    "camera gauge";
 
   grid-template-columns:
-    minmax(92px, 25vw)
     minmax(0, 1fr)
-    58px;
+    48px;
 
-  overflow:
-    hidden;
+  grid-template-rows:
+    auto
+    minmax(360px, 62svh);
 
-  min-height:
-    56vh;
+  overflow: hidden;
 
-  border:
-    1px solid
-    var(--border);
+  width: 100%;
 
-  border-radius:
-    var(--radius);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 
-  background:
-    var(--surface);
+  background: var(--surface);
 
-  box-shadow:
-    var(--shadow);
+  box-shadow: var(--shadow);
 }
 
 
+/************************************************************
+ * Person Panel
+ ************************************************************/
+
 .person-panel {
-  position:
-    relative;
+  grid-area: person;
 
-  z-index:
-    5;
+  display: grid;
 
-  display:
-    flex;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
 
-  flex-direction:
-    column;
+  gap: 7px;
 
-  gap:
-    7px;
+  padding: 8px;
 
-  overflow-y:
-    auto;
+  border-bottom:
+    1px solid rgba(255, 255, 255, 0.14);
 
-  padding:
-    8px 6px;
-
-  border-right:
-    1px solid
-    rgba(255, 255, 255, 0.14);
-
-  color:
-    #ffffff;
+  color: #ffffff;
 
   background:
     linear-gradient(
-      180deg,
-      #173f58,
-      #0d2d42
+      135deg,
+      #143f59,
+      #0b2d42
     );
 }
 
 
 .compact-field {
-  display:
-    flex;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 
-  flex-direction:
-    column;
-
-  gap:
-    3px;
+  min-width: 0;
 }
 
 
 .compact-field label {
-  overflow:
-    hidden;
+  overflow: hidden;
 
-  color:
-    rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.80);
 
-  font-size:
-    10px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
 
-  font-weight:
-    700;
-
-  line-height:
-    1.2;
-
-  text-overflow:
-    ellipsis;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 
 .compact-field input,
 .compact-field select {
-  width:
-    100%;
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
 
-  min-width:
-    0;
-
-  min-height:
-    34px;
-
-  padding:
-    6px;
+  padding: 6px 7px;
 
   border:
-    1px solid
-    rgba(255, 255, 255, 0.28);
+    1px solid rgba(255, 255, 255, 0.30);
 
-  border-radius:
-    8px;
+  border-radius: 8px;
+  outline: none;
 
-  outline:
-    none;
-
-  color:
-    #ffffff;
+  color: #ffffff;
 
   background:
     rgba(255, 255, 255, 0.11);
 
-  font-size:
-    11px;
+  font-size: 11px;
+}
+
+
+.compact-field select {
+  appearance: auto;
 }
 
 
 .compact-field select option {
-  color:
-    var(--text);
-
-  background:
-    #ffffff;
+  color: var(--text);
+  background: #ffffff;
 }
 
 
 .compact-field input::placeholder {
-  color:
-    rgba(255, 255, 255, 0.48);
+  color: rgba(255, 255, 255, 0.46);
 }
 
 
 .compact-field input:focus,
 .compact-field select:focus {
-  border-color:
-    #7fd6ff;
+  border-color: #7fd6ff;
 
   box-shadow:
-    0 0 0 2px
-    rgba(66, 183, 238, 0.22);
+    0 0 0 2px rgba(77, 186, 238, 0.20);
 }
 
 
+/************************************************************
+ * Camera Stage
+ ************************************************************/
+
 .camera-stage {
-  position:
-    relative;
+  grid-area: camera;
 
-  display:
-    flex;
+  position: relative;
 
-  align-items:
-    center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-  justify-content:
-    center;
+  overflow: hidden;
 
-  overflow:
-    hidden;
+  width: 100%;
+  min-width: 0;
+  min-height: 360px;
 
-  min-width:
-    0;
-
-  min-height:
-    56vh;
-
-  background:
-    #071016;
+  background: #050b0f;
 }
 
 
 .camera-stage video {
-  position:
-    absolute;
+  position: absolute;
+  inset: 0;
 
-  inset:
-    0;
+  display: block;
 
-  width:
-    100%;
+  width: 100%;
+  height: 100%;
 
-  height:
-    100%;
+  object-fit: cover;
 
-  object-fit:
-    cover;
-
-  background:
-    #071016;
+  background: #050b0f;
 }
 
 
 .camera-placeholder {
-  position:
-    relative;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
 
-  z-index:
-    2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
 
-  display:
-    flex;
+  padding: 16px;
 
-  flex-direction:
-    column;
+  color: rgba(255, 255, 255, 0.70);
+  text-align: center;
 
-  align-items:
-    center;
-
-  justify-content:
-    center;
-
-  gap:
-    8px;
-
-  width:
-    100%;
-
-  height:
-    100%;
-
-  padding:
-    16px;
-
-  color:
-    rgba(255, 255, 255, 0.70);
-
-  text-align:
-    center;
+  background:
+    radial-gradient(
+      circle at center,
+      #14222b,
+      #050b0f
+    );
 }
 
 
 .camera-placeholder-icon {
-  display:
-    grid;
+  display: grid;
+  place-items: center;
 
-  place-items:
-    center;
-
-  width:
-    58px;
-
-  height:
-    58px;
+  width: 52px;
+  height: 52px;
 
   border:
-    2px solid
-    rgba(255, 255, 255, 0.55);
+    2px solid rgba(255, 255, 255, 0.55);
 
-  border-radius:
-    18px;
+  border-radius: 15px;
 
-  font-size:
-    34px;
+  font-size: 30px;
 }
 
 
 .camera-placeholder strong {
-  color:
-    #ffffff;
+  color: #ffffff;
 
-  font-size:
-    16px;
+  font-size: 14px;
 }
 
 
 .camera-placeholder span {
-  max-width:
-    220px;
+  max-width: 230px;
 
-  font-size:
-    11px;
-
-  line-height:
-    1.45;
+  font-size: 10px;
+  line-height: 1.4;
 }
 
 
 .blur-overlay {
-  position:
-    absolute;
+  position: absolute;
+  inset: 0;
+  z-index: 4;
 
-  inset:
-    0;
-
-  z-index:
-    3;
-
-  pointer-events:
-    none;
+  pointer-events: none;
 }
 
 
-.camera-toolbar {
-  position:
-    absolute;
+/************************************************************
+ * Camera Status
+ ************************************************************/
 
-  right:
-    6px;
+.camera-status {
+  position: absolute;
 
-  bottom:
-    8px;
+  top: 7px;
+  left: 50%;
 
-  left:
-    6px;
+  z-index: 15;
 
-  z-index:
-    8;
+  max-width: calc(100% - 14px);
 
-  display:
-    flex;
-
-  align-items:
-    center;
-
-  justify-content:
-    center;
-
-  gap:
-    8px;
-
-  padding:
-    7px;
+  padding: 5px 9px;
 
   border:
-    1px solid
-    rgba(255, 255, 255, 0.14);
+    1px solid rgba(255, 255, 255, 0.22);
 
-  border-radius:
-    14px;
+  border-radius: 999px;
 
-  background:
-    rgba(0, 0, 0, 0.42);
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.60);
 
-  backdrop-filter:
-    blur(8px);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.25;
+
+  text-align: center;
+
+  transform: translateX(-50%);
+
+  backdrop-filter: blur(8px);
+
+  pointer-events: none;
+}
+
+
+.camera-status.success {
+  background: rgba(12, 122, 65, 0.88);
+}
+
+
+.camera-status.error {
+  background: rgba(190, 20, 20, 0.92);
+}
+
+
+.camera-status.loading {
+  background: rgba(145, 104, 0, 0.90);
+}
+
+
+.camera-status.info {
+  background: rgba(10, 65, 98, 0.90);
+}
+
+
+/************************************************************
+ * Camera Toolbar
+ ************************************************************/
+
+.camera-toolbar {
+  position: absolute;
+
+  right: 5px;
+  bottom: 6px;
+  left: 5px;
+
+  z-index: 16;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+
+  gap: 4px;
+
+  padding: 5px;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.15);
+
+  border-radius: 12px;
+
+  background: rgba(0, 0, 0, 0.48);
+
+  backdrop-filter: blur(8px);
 }
 
 
 .camera-button {
-  min-height:
-    34px;
+  min-height: 29px;
 
-  padding:
-    6px 9px;
+  padding: 4px 6px;
 
   border:
-    1px solid
-    rgba(255, 255, 255, 0.35);
+    1px solid rgba(255, 255, 255, 0.34);
 
-  border-radius:
-    9px;
+  border-radius: 8px;
 
-  color:
-    #ffffff;
+  color: #ffffff;
 
   background:
     rgba(255, 255, 255, 0.12);
 
-  font-size:
-    10px;
+  font-size: 8px;
+  font-weight: 750;
+  line-height: 1.1;
+}
 
-  font-weight:
-    700;
+
+.camera-button:not(:disabled):active {
+  transform: scale(0.97);
+
+  background:
+    rgba(255, 255, 255, 0.24);
 }
 
 
 .capture-button {
-  display:
-    grid;
+  display: grid;
+  place-items: center;
 
-  place-items:
-    center;
+  flex: 0 0 50px;
 
-  flex:
-    0 0 54px;
+  width: 50px;
+  height: 50px;
 
-  width:
-    54px;
+  padding: 4px;
 
-  height:
-    54px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
 
-  padding:
-    4px;
-
-  border:
-    3px solid #ffffff;
-
-  border-radius:
-    50%;
-
-  background:
-    transparent;
+  background: rgba(0, 0, 0, 0.20);
 }
 
 
 .capture-button span {
-  display:
-    block;
+  display: block;
 
-  width:
-    38px;
+  width: 35px;
+  height: 35px;
 
-  height:
-    38px;
+  border-radius: 50%;
 
-  border-radius:
-    50%;
-
-  background:
-    #ffffff;
+  background: #ffffff;
 }
 
+
+.capture-button:not(:disabled):active span {
+  transform: scale(0.90);
+}
+
+
+.file-input-hidden {
+  position: absolute;
+
+  width: 1px;
+  height: 1px;
+
+  overflow: hidden;
+
+  opacity: 0;
+  pointer-events: none;
+}
+
+
+/************************************************************
+ * Gauge Panel
+ ************************************************************/
 
 .gauge-panel {
-  display:
-    flex;
+  grid-area: gauge;
 
-  flex-direction:
-    column;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 
-  align-items:
-    center;
+  overflow: hidden;
 
-  overflow:
-    hidden;
+  width: 48px;
+  min-width: 48px;
 
-  min-width:
-    0;
+  padding: 6px 3px;
 
-  padding:
-    8px 4px;
-
-  border-left:
-    1px solid
-    var(--border);
+  border-left: 1px solid var(--border);
 
   background:
-    #f5f8fa;
+    linear-gradient(
+      180deg,
+      #f8fafb,
+      #eaf0f3
+    );
 }
 
 
 .gauge-value {
-  width:
-    100%;
+  display: grid;
+  place-items: center;
 
-  min-height:
-    38px;
+  width: 100%;
+  min-height: 36px;
 
-  padding:
-    5px 2px;
+  padding: 4px 1px;
 
-  border-radius:
-    8px;
+  border-radius: 7px;
 
-  color:
-    #ffffff;
+  color: #ffffff;
+  background: var(--success);
 
-  background:
-    var(--success);
+  font-size: 8px;
+  font-weight: 850;
+  line-height: 1.15;
 
-  font-size:
-    10px;
-
-  font-weight:
-    800;
-
-  line-height:
-    1.2;
-
-  text-align:
-    center;
+  text-align: center;
 }
 
 
-.gauge-panel.level-warning
-.gauge-value {
-  color:
-    #2e2800;
-
-  background:
-    #ffd000;
+.gauge-panel.level-warning .gauge-value {
+  color: #302800;
+  background: #ffd000;
 }
 
 
-.gauge-panel.level-orange
-.gauge-value {
-  background:
-    var(--orange);
+.gauge-panel.level-orange .gauge-value {
+  background: var(--orange);
 }
 
 
-.gauge-panel.level-danger
-.gauge-value {
-  background:
-    var(--danger);
+.gauge-panel.level-danger .gauge-value {
+  background: var(--danger);
 }
 
 
-.gauge-panel.level-critical
-.gauge-value {
-  background:
-    var(--critical);
+.gauge-panel.level-critical .gauge-value {
+  background: var(--critical);
 }
 
 
 .gauge-scale {
-  position:
-    relative;
+  position: relative;
 
-  flex:
-    1;
+  flex: 1;
 
-  width:
-    100%;
+  width: 100%;
+  min-height: 270px;
 
-  min-height:
-    350px;
-
-  margin:
-    8px 0;
+  margin: 6px 0;
 }
 
 
 .gauge-track {
-  position:
-    absolute;
+  position: absolute;
 
-  top:
-    4px;
+  top: 4px;
+  right: 4px;
+  bottom: 4px;
 
-  right:
-    9px;
+  width: 16px;
 
-  bottom:
-    4px;
+  overflow: hidden;
 
-  width:
-    18px;
+  border: 2px solid #26343d;
+  border-radius: 999px;
 
-  overflow:
-    hidden;
-
-  border:
-    2px solid
-    #27353d;
-
-  border-radius:
-    999px;
-
-  background:
-    #e6ecef;
+  background: #e4eaed;
 }
 
 
 .gauge-gradient {
-  position:
-    absolute;
-
-  inset:
-    0;
+  position: absolute;
+  inset: 0;
 
   background:
     linear-gradient(
       to top,
-      #14a05a 0%,
-      #52bd54 2%,
-      #f3df20 20%,
-      #f18a18 50%,
-      #e93224 80%,
+      #129c56 0%,
+      #4fba51 2%,
+      #f1dd1b 20%,
+      #ee8816 50%,
+      #e63124 80%,
       #ff0000 100%
     );
 }
 
 
 .gauge-mask {
-  position:
-    absolute;
+  position: absolute;
 
-  top:
-    0;
+  top: 0;
+  right: 0;
+  left: 0;
 
-  right:
-    0;
-
-  left:
-    0;
-
-  height:
-    100%;
+  height: 100%;
 
   background:
-    rgba(235, 241, 244, 0.90);
+    rgba(235, 241, 244, 0.91);
 
-  transition:
-    height 180ms ease;
+  transition: height 180ms ease;
 }
 
 
 .gauge-indicator {
-  position:
-    absolute;
+  position: absolute;
 
-  right:
-    3px;
+  right: 2px;
+  left: 2px;
+  bottom: 0%;
 
-  left:
-    3px;
+  height: 3px;
 
-  bottom:
-    0%;
+  border-radius: 5px;
 
-  height:
-    3px;
-
-  border-radius:
-    5px;
-
-  background:
-    #000000;
+  background: #000000;
 
   box-shadow:
     0 0 0 2px #ffffff;
 
-  transition:
-    bottom 180ms ease;
+  transition: bottom 180ms ease;
 }
 
 
 .scale-number {
-  position:
-    absolute;
+  position: absolute;
+  left: 0;
 
-  left:
-    0;
+  color: #26343d;
 
-  font-size:
-    9px;
+  font-size: 7px;
+  font-weight: 850;
+  line-height: 1;
 
-  font-weight:
-    800;
-
-  transform:
-    translateY(50%);
+  transform: translateY(50%);
 }
 
 
 .scale-50 {
-  top:
-    0;
-
-  transform:
-    none;
+  top: 0;
+  transform: none;
 }
 
 
 .scale-25 {
-  bottom:
-    50%;
+  bottom: 50%;
 }
 
 
 .scale-10 {
-  bottom:
-    20%;
+  bottom: 20%;
 }
 
 
 .scale-1 {
-  bottom:
-    2%;
+  bottom: 2%;
 }
 
 
 .scale-0 {
-  bottom:
-    0;
-
-  transform:
-    none;
+  bottom: 0;
+  transform: none;
 }
 
 
 .gauge-unit {
-  color:
-    var(--muted);
+  color: var(--muted);
 
-  font-size:
-    10px;
-
-  font-weight:
-    800;
+  font-size: 8px;
+  font-weight: 850;
 }
 
 
+/************************************************************
+ * Selected Capture
+ ************************************************************/
+
+.selected-capture-panel {
+  display: grid;
+
+  grid-template-columns:
+    72px
+    minmax(0, 1fr)
+    auto;
+
+  align-items: center;
+
+  gap: 7px;
+
+  margin-top: 6px;
+  padding: 7px;
+
+  border: 1px solid #b8d8c5;
+  border-radius: 12px;
+
+  background: #f1fbf5;
+
+  box-shadow: var(--shadow);
+}
+
+
+.selected-capture-image-wrap {
+  overflow: hidden;
+
+  width: 72px;
+  height: 58px;
+
+  border-radius: 8px;
+
+  background: #101820;
+}
+
+
+.selected-capture-image-wrap img {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+}
+
+
+.selected-capture-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  min-width: 0;
+}
+
+
+.selected-capture-content strong {
+  color: #12643c;
+
+  font-size: 11px;
+}
+
+
+.selected-capture-content span {
+  color: var(--text);
+
+  font-size: 9px;
+  font-weight: 700;
+}
+
+
+.selected-capture-content small {
+  overflow: hidden;
+
+  color: var(--muted);
+
+  font-size: 8px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.remove-capture-button {
+  min-height: 32px;
+
+  padding: 5px 7px;
+
+  border: 1px solid #dd9d9d;
+  border-radius: 8px;
+
+  color: #b00020;
+  background: #ffffff;
+
+  font-size: 9px;
+  font-weight: 750;
+}
+
+
+/************************************************************
+ * Form Cards
+ ************************************************************/
+
 .form-card,
 .round-card {
-  margin-top:
-    8px;
+  margin-top: 6px;
+  padding: 8px;
 
-  padding:
-    10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
 
-  border:
-    1px solid
-    var(--border);
+  background: var(--surface);
 
-  border-radius:
-    var(--radius);
-
-  background:
-    var(--surface);
-
-  box-shadow:
-    var(--shadow);
+  box-shadow: var(--shadow);
 }
 
 
 .form-grid {
-  display:
-    grid;
+  display: grid;
 
   grid-template-columns:
     repeat(2, minmax(0, 1fr));
 
-  gap:
-    9px;
+  gap: 7px;
 }
 
 
 .field-group {
-  display:
-    flex;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 
-  flex-direction:
-    column;
-
-  min-width:
-    0;
-
-  gap:
-    5px;
+  min-width: 0;
 }
 
 
 .field-group label,
 .field-group legend {
-  color:
-    #354a56;
+  color: #354a56;
 
-  font-size:
-    11px;
-
-  font-weight:
-    750;
+  font-size: 10px;
+  font-weight: 750;
 }
 
 
 .field-group select,
 .field-group input {
-  width:
-    100%;
+  width: 100%;
+  min-width: 0;
+  min-height: 39px;
 
-  min-width:
-    0;
+  padding: 7px 8px;
 
-  min-height:
-    42px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  outline: none;
 
-  padding:
-    8px 10px;
+  color: var(--text);
+  background: #ffffff;
 
-  border:
-    1px solid
-    var(--border);
-
-  border-radius:
-    10px;
-
-  outline:
-    none;
-
-  color:
-    var(--text);
-
-  background:
-    #ffffff;
-
-  font-size:
-    14px;
+  font-size: 13px;
 }
 
 
 .field-group select:focus,
 .field-group input:focus {
-  border-color:
-    #4aa2cf;
+  border-color: #4aa2cf;
 
   box-shadow:
-    0 0 0 3px
-    rgba(74, 162, 207, 0.14);
+    0 0 0 3px rgba(74, 162, 207, 0.13);
 }
 
 
+/************************************************************
+ * Checkpoint
+ ************************************************************/
+
 .checkpoint-group {
-  margin:
-    0;
-
-  padding:
-    0;
-
-  border:
-    0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 
 .segmented-control {
-  display:
-    grid;
+  display: grid;
 
   grid-template-columns:
     repeat(2, minmax(0, 1fr));
 
-  overflow:
-    hidden;
+  overflow: hidden;
 
-  min-height:
-    42px;
+  min-height: 39px;
 
-  border:
-    1px solid
-    var(--border);
-
-  border-radius:
-    10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
 }
 
 
 .segmented-control label {
-  position:
-    relative;
-
-  display:
-    block;
+  position: relative;
+  display: block;
 }
 
 
 .segmented-control input {
-  position:
-    absolute;
-
-  opacity:
-    0;
+  position: absolute;
+  opacity: 0;
 }
 
 
 .segmented-control span {
-  display:
-    grid;
+  display: grid;
+  place-items: center;
 
-  place-items:
-    center;
+  height: 100%;
 
-  height:
-    100%;
+  padding: 7px 3px;
 
-  padding:
-    8px 4px;
+  color: var(--muted);
+  background: var(--surface-soft);
 
-  color:
-    var(--muted);
+  font-size: 10px;
+  font-weight: 750;
 
-  background:
-    var(--surface-soft);
-
-  font-size:
-    12px;
-
-  font-weight:
-    750;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
 }
 
 
-.segmented-control label +
-label span {
-  border-left:
-    1px solid
-    var(--border);
+.segmented-control label + label span {
+  border-left: 1px solid var(--border);
 }
 
 
-.segmented-control input:checked +
-span {
-  color:
-    #ffffff;
-
-  background:
-    var(--primary);
+.segmented-control input:checked + span {
+  color: #ffffff;
+  background: var(--primary);
 }
 
+
+/************************************************************
+ * Measurement Input
+ ************************************************************/
 
 .measurement-group {
-  grid-column:
-    1 / -1;
+  grid-column: 1 / -1;
 }
 
 
 .measurement-input-wrap {
-  display:
-    flex;
+  display: flex;
+  align-items: stretch;
 
-  align-items:
-    center;
+  overflow: hidden;
 
-  overflow:
-    hidden;
+  min-height: 48px;
 
-  border:
-    2px solid
-    var(--primary);
+  border: 2px solid var(--primary);
+  border-radius: 10px;
 
-  border-radius:
-    12px;
-
-  background:
-    #ffffff;
+  background: #ffffff;
 }
 
 
 .measurement-input-wrap input {
-  flex:
-    1;
+  flex: 1;
 
-  min-width:
-    0;
+  min-width: 0;
+  min-height: 46px;
 
-  border:
-    0;
+  padding: 5px 8px;
 
-  border-radius:
-    0;
+  border: 0;
+  border-radius: 0;
 
-  font-size:
-    24px;
+  font-size: 22px;
+  font-weight: 850;
+  line-height: 1;
 
-  font-weight:
-    850;
+  text-align: center;
 
-  text-align:
-    center;
-
-  box-shadow:
-    none;
+  box-shadow: none;
 }
 
 
 .measurement-input-wrap span {
-  align-self:
-    stretch;
+  display: grid;
+  place-items: center;
 
-  display:
-    grid;
+  min-width: 54px;
 
-  place-items:
-    center;
+  padding: 6px;
 
-  min-width:
-    58px;
+  color: #ffffff;
+  background: var(--primary);
 
-  padding:
-    7px;
-
-  color:
-    #ffffff;
-
-  background:
-    var(--primary);
-
-  font-size:
-    13px;
-
-  font-weight:
-    800;
+  font-size: 12px;
+  font-weight: 850;
 }
 
 
+/************************************************************
+ * Rounds
+ ************************************************************/
+
 .section-heading {
-  display:
-    flex;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
 
-  align-items:
-    center;
+  margin-bottom: 7px;
+}
 
-  justify-content:
-    space-between;
 
-  gap:
-    10px;
-
-  margin-bottom:
-    8px;
+.section-heading > div {
+  min-width: 0;
 }
 
 
 .section-heading h2 {
-  margin:
-    0;
+  margin: 0;
 
-  font-size:
-    15px;
+  font-size: 13px;
 }
 
 
 .section-heading p {
-  margin:
-    2px 0 0;
+  margin: 2px 0 0;
 
-  color:
-    var(--muted);
+  color: var(--muted);
 
-  font-size:
-    10px;
+  font-size: 8px;
 }
 
 
 .outline-button {
-  min-height:
-    36px;
+  flex: 0 0 auto;
 
-  padding:
-    7px 10px;
+  min-height: 34px;
 
-  border:
-    1px solid
-    var(--primary);
+  padding: 6px 8px;
 
-  border-radius:
-    10px;
+  border: 1px solid var(--primary);
+  border-radius: 9px;
 
-  color:
-    var(--primary);
+  color: var(--primary);
+  background: #ffffff;
 
-  background:
-    #ffffff;
-
-  font-size:
-    11px;
-
-  font-weight:
-    800;
+  font-size: 9px;
+  font-weight: 800;
 }
 
 
 .rounds-list {
-  display:
-    grid;
-
-  gap:
-    7px;
+  display: grid;
+  gap: 6px;
 }
 
 
 .empty-state {
-  padding:
-    22px 10px;
+  padding: 18px 8px;
 
-  border:
-    1px dashed
-    #b9c8cf;
+  border: 1px dashed #b9c8cf;
+  border-radius: 10px;
 
-  border-radius:
-    11px;
+  color: var(--muted);
+  background: var(--surface-soft);
 
-  color:
-    var(--muted);
-
-  background:
-    var(--surface-soft);
-
-  font-size:
-    12px;
-
-  text-align:
-    center;
+  font-size: 10px;
+  text-align: center;
 }
 
 
+/************************************************************
+ * Action Bar
+ ************************************************************/
+
 .action-bar {
-  position:
-    sticky;
+  position: sticky;
 
-  bottom:
-    0;
+  bottom: 0;
+  z-index: 80;
 
-  z-index:
-    40;
-
-  display:
-    grid;
+  display: grid;
 
   grid-template-columns:
-    minmax(0, 0.75fr)
-    minmax(0, 1.25fr);
+    minmax(0, 0.8fr)
+    minmax(0, 1.2fr);
 
-  gap:
-    8px;
+  gap: 7px;
 
-  margin-top:
-    8px;
+  margin-top: 6px;
 
   padding:
-    9px;
+    7px
+    7px
+    calc(7px + var(--safe-bottom));
 
-  border:
-    1px solid
-    var(--border);
+  border: 1px solid var(--border);
+  border-radius: 12px 12px 0 0;
 
-  border-radius:
-    15px 15px 0 0;
-
-  background:
-    rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.95);
 
   box-shadow:
-    0 -6px 20px
-    rgba(18, 63, 91, 0.10);
+    0 -5px 18px rgba(18, 63, 91, 0.10);
 
-  backdrop-filter:
-    blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 
 .primary-action,
 .secondary-action {
-  min-height:
-    48px;
+  min-height: 45px;
 
-  border-radius:
-    12px;
+  border-radius: 10px;
 
-  font-size:
-    14px;
-
-  font-weight:
-    850;
+  font-size: 12px;
+  font-weight: 850;
 }
 
 
 .primary-action {
-  border:
-    0;
+  border: 0;
 
-  color:
-    #ffffff;
+  color: #ffffff;
 
   background:
     linear-gradient(
@@ -1754,391 +1512,10 @@ span {
 
 
 .secondary-action {
-  border:
-    1px solid
-    var(--border);
+  border: 1px solid var(--border);
 
-  color:
-    var(--primary);
-
-  background:
-    #ffffff;
-}
-
-
-@media (min-width: 700px) {
-
-  .main-content {
-    padding:
-      14px;
-  }
-
-  .camera-workspace {
-    grid-template-columns:
-      240px
-      minmax(0, 1fr)
-      84px;
-
-    min-height:
-      620px;
-  }
-
-  .camera-stage {
-    min-height:
-      620px;
-  }
-
-  .person-panel {
-    padding:
-      14px;
-
-    gap:
-      11px;
-  }
-
-  .compact-field label {
-    font-size:
-      12px;
-  }
-
-  .compact-field input,
-  .compact-field select {
-    min-height:
-      42px;
-
-    padding:
-      9px;
-
-    font-size:
-      13px;
-  }
-
-  .gauge-value {
-    font-size:
-      12px;
-  }
-
-  .form-grid {
-    grid-template-columns:
-      repeat(3, minmax(0, 1fr));
-  }
-
-  .measurement-group {
-    grid-column:
-      auto;
-  }
-}
-
-
-@media (max-width: 370px) {
-
-  .camera-workspace {
-    grid-template-columns:
-      82px
-      minmax(0, 1fr)
-      50px;
-  }
-
-  .person-panel {
-    padding:
-      7px 4px;
-  }
-
-  .compact-field input,
-  .compact-field select {
-    padding:
-      4px;
-
-    font-size:
-      10px;
-  }
-
-  .camera-button {
-    padding:
-      5px;
-
-    font-size:
-      9px;
-  }
-
-  .capture-button {
-    flex-basis:
-      48px;
-
-    width:
-      48px;
-
-    height:
-      48px;
-  }
-
-  .capture-button span {
-    width:
-      34px;
-
-    height:
-      34px;
-  }
-}
-/************************************************************
- * Camera Status
- ************************************************************/
-
-.camera-status {
-  position:
-    absolute;
-
-  top:
-    8px;
-
-  left:
-    50%;
-
-  z-index:
-    12;
-
-  max-width:
-    calc(100% - 20px);
-
-  padding:
-    6px 10px;
-
-  border:
-    1px solid
-    rgba(255, 255, 255, 0.22);
-
-  border-radius:
-    999px;
-
-  color:
-    #ffffff;
-
-  background:
-    rgba(0, 0, 0, 0.58);
-
-  font-size:
-    10px;
-
-  font-weight:
-    700;
-
-  text-align:
-    center;
-
-  transform:
-    translateX(-50%);
-
-  backdrop-filter:
-    blur(8px);
-
-  pointer-events:
-    none;
-}
-
-
-.camera-status.success {
-  background:
-    rgba(16, 126, 70, 0.86);
-}
-
-
-.camera-status.error {
-  background:
-    rgba(190, 20, 20, 0.90);
-}
-
-
-.camera-status.loading {
-  background:
-    rgba(152, 109, 0, 0.88);
-}
-
-
-.camera-status.info {
-  background:
-    rgba(12, 64, 96, 0.88);
-}
-
-
-.camera-toolbar {
-  flex-wrap:
-    wrap;
-}
-
-
-.file-input-hidden {
-  position:
-    absolute;
-
-  width:
-    1px;
-
-  height:
-    1px;
-
-  overflow:
-    hidden;
-
-  opacity:
-    0;
-
-  pointer-events:
-    none;
-}
-
-
-/************************************************************
- * Selected Capture
- ************************************************************/
-
-.selected-capture-panel {
-  display:
-    grid;
-
-  grid-template-columns:
-    82px
-    minmax(0, 1fr)
-    auto;
-
-  align-items:
-    center;
-
-  gap:
-    9px;
-
-  margin-top:
-    8px;
-
-  padding:
-    8px;
-
-  border:
-    1px solid
-    #b8d8c5;
-
-  border-radius:
-    14px;
-
-  background:
-    #f2fbf6;
-
-  box-shadow:
-    var(--shadow);
-}
-
-
-.selected-capture-image-wrap {
-  overflow:
-    hidden;
-
-  width:
-    82px;
-
-  height:
-    64px;
-
-  border-radius:
-    10px;
-
-  background:
-    #101820;
-}
-
-
-.selected-capture-image-wrap img {
-  display:
-    block;
-
-  width:
-    100%;
-
-  height:
-    100%;
-
-  object-fit:
-    cover;
-}
-
-
-.selected-capture-content {
-  display:
-    flex;
-
-  flex-direction:
-    column;
-
-  min-width:
-    0;
-
-  gap:
-    2px;
-}
-
-
-.selected-capture-content strong {
-  color:
-    #12643c;
-
-  font-size:
-    12px;
-}
-
-
-.selected-capture-content span {
-  color:
-    var(--text);
-
-  font-size:
-    11px;
-
-  font-weight:
-    700;
-}
-
-
-.selected-capture-content small {
-  overflow:
-    hidden;
-
-  color:
-    var(--muted);
-
-  font-size:
-    9px;
-
-  text-overflow:
-    ellipsis;
-
-  white-space:
-    nowrap;
-}
-
-
-.remove-capture-button {
-  min-height:
-    34px;
-
-  padding:
-    6px 9px;
-
-  border:
-    1px solid
-    #df9b9b;
-
-  border-radius:
-    9px;
-
-  color:
-    #b00020;
-
-  background:
-    #ffffff;
-
-  font-size:
-    10px;
-
-  font-weight:
-    750;
+  color: var(--primary);
+  background: #ffffff;
 }
 
 
@@ -2147,223 +1524,166 @@ span {
  ************************************************************/
 
 body.modal-open {
-  overflow:
-    hidden;
+  overflow: hidden;
 }
 
 
 .capture-preview-modal {
-  position:
-    fixed;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
 
-  inset:
-    0;
-
-  z-index:
-    9999;
-
-  display:
-    flex;
-
-  align-items:
-    center;
-
-  justify-content:
-    center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   padding:
-    12px;
+    max(7px, env(safe-area-inset-top, 0px))
+    7px
+    max(7px, env(safe-area-inset-bottom, 0px));
 
-  background:
-    rgba(0, 0, 0, 0.82);
+  background: rgba(0, 0, 0, 0.84);
 
-  backdrop-filter:
-    blur(5px);
+  backdrop-filter: blur(5px);
 }
 
 
 .capture-preview-card {
-  display:
-    flex;
+  display: flex;
+  flex-direction: column;
 
-  flex-direction:
-    column;
+  overflow: hidden;
 
-  overflow:
-    hidden;
-
-  width:
-    min(100%, 720px);
-
+  width: min(100%, 620px);
   max-height:
-    calc(100vh - 24px);
+    calc(
+      100dvh -
+      env(safe-area-inset-top, 0px) -
+      env(safe-area-inset-bottom, 0px) -
+      14px
+    );
 
   border:
-    1px solid
-    rgba(255, 255, 255, 0.18);
+    1px solid rgba(255, 255, 255, 0.18);
 
-  border-radius:
-    18px;
+  border-radius: 14px;
 
-  background:
-    #ffffff;
+  background: #ffffff;
 
-  box-shadow:
-    0 24px 70px
-    rgba(0, 0, 0, 0.42);
+  box-shadow: var(--shadow-strong);
 }
 
 
 .capture-preview-header {
-  padding:
-    11px 13px;
+  flex: 0 0 auto;
 
-  border-bottom:
-    1px solid
-    var(--border);
+  padding: 9px 11px;
+
+  border-bottom: 1px solid var(--border);
 }
 
 
 .capture-preview-header h2 {
-  margin:
-    0;
+  margin: 0;
 
-  color:
-    var(--primary);
+  color: var(--primary);
 
-  font-size:
-    16px;
+  font-size: 14px;
 }
 
 
 .capture-preview-header p {
-  margin:
-    3px 0 0;
+  margin: 2px 0 0;
 
-  color:
-    var(--muted);
+  color: var(--muted);
 
-  font-size:
-    10px;
+  font-size: 9px;
 }
 
 
 .capture-preview-body {
-  display:
-    flex;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-  align-items:
-    center;
+  overflow: hidden;
 
-  justify-content:
-    center;
+  flex: 1 1 auto;
 
-  overflow:
-    hidden;
+  min-height: 220px;
+  max-height: 68dvh;
 
-  flex:
-    1;
+  padding: 5px;
 
-  min-height:
-    220px;
-
-  max-height:
-    68vh;
-
-  padding:
-    7px;
-
-  background:
-    #060b0f;
+  background: #050a0e;
 }
 
 
 .capture-preview-body img {
-  display:
-    block;
+  display: block;
 
-  max-width:
-    100%;
+  width: auto;
+  height: auto;
 
-  max-height:
-    66vh;
+  max-width: 100%;
+  max-height: 66dvh;
 
-  object-fit:
-    contain;
+  object-fit: contain;
 }
 
 
 .capture-preview-meta {
-  padding:
-    6px 12px;
+  flex: 0 0 auto;
 
-  color:
-    var(--muted);
+  padding: 5px 10px;
 
-  background:
-    var(--surface-soft);
+  color: var(--muted);
+  background: var(--surface-soft);
 
-  font-size:
-    10px;
+  font-size: 9px;
+  font-weight: 700;
 
-  font-weight:
-    700;
-
-  text-align:
-    center;
+  text-align: center;
 }
 
 
 .capture-preview-actions {
-  display:
-    grid;
+  flex: 0 0 auto;
+
+  display: grid;
 
   grid-template-columns:
     repeat(2, minmax(0, 1fr));
 
-  gap:
-    8px;
+  gap: 7px;
 
-  padding:
-    10px;
+  padding: 8px;
 }
 
 
 .preview-secondary-button,
 .preview-primary-button {
-  min-height:
-    46px;
+  min-height: 43px;
 
-  border-radius:
-    11px;
+  border-radius: 10px;
 
-  font-size:
-    13px;
-
-  font-weight:
-    800;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 
 .preview-secondary-button {
-  border:
-    1px solid
-    var(--border);
+  border: 1px solid var(--border);
 
-  color:
-    var(--primary);
-
-  background:
-    #ffffff;
+  color: var(--primary);
+  background: #ffffff;
 }
 
 
 .preview-primary-button {
-  border:
-    0;
+  border: 0;
 
-  color:
-    #ffffff;
+  color: #ffffff;
 
   background:
     linear-gradient(
@@ -2374,61 +1694,387 @@ body.modal-open {
 }
 
 
-@media (max-width: 430px) {
+/************************************************************
+ * Very Small Mobile
+ ************************************************************/
 
-  .camera-toolbar {
-    gap:
-      5px;
+@media (max-width: 360px) {
+
+  .topbar {
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+
+  .app-icon {
+    flex-basis: 32px;
+
+    width: 32px;
+    height: 32px;
+
+    font-size: 17px;
+  }
+
+  .topbar h1 {
+    font-size: 12px;
+  }
+
+  .datetime {
+    font-size: 8px;
+  }
+
+  .person-panel {
+    gap: 5px;
+    padding: 6px;
+  }
+
+  .compact-field input,
+  .compact-field select {
+    min-height: 34px;
+
+    padding: 5px;
+
+    font-size: 10px;
+  }
+
+  .camera-workspace {
+    grid-template-columns:
+      minmax(0, 1fr)
+      44px;
+
+    grid-template-rows:
+      auto
+      minmax(330px, 60svh);
+  }
+
+  .gauge-panel {
+    width: 44px;
+    min-width: 44px;
   }
 
   .camera-button {
-    min-height:
-      30px;
+    padding: 4px 5px;
 
-    padding:
-      4px 7px;
-
-    font-size:
-      9px;
+    font-size: 7px;
   }
 
   .capture-button {
-    flex-basis:
-      48px;
+    flex-basis: 46px;
 
-    width:
-      48px;
+    width: 46px;
+    height: 46px;
+  }
 
-    height:
-      48px;
+  .capture-button span {
+    width: 32px;
+    height: 32px;
   }
 
   .selected-capture-panel {
     grid-template-columns:
-      68px
+      62px
       minmax(0, 1fr)
       auto;
   }
 
   .selected-capture-image-wrap {
-    width:
-      68px;
-
-    height:
-      58px;
-  }
-
-  .capture-preview-modal {
-    padding:
-      7px;
-  }
-
-  .capture-preview-card {
-    max-height:
-      calc(100vh - 14px);
-
-    border-radius:
-      14px;
+    width: 62px;
+    height: 52px;
   }
 
 }
+
+
+/************************************************************
+ * Tablet / Desktop
+ ************************************************************/
+
+@media (min-width: 760px) {
+
+  .topbar {
+    min-height: 64px;
+
+    padding:
+      calc(9px + env(safe-area-inset-top, 0px))
+      14px
+      9px;
+  }
+
+  .topbar h1 {
+    font-size: 16px;
+  }
+
+  .topbar p {
+    font-size: 10px;
+  }
+
+  .datetime {
+    font-size: 11px;
+  }
+
+  .connection-badge {
+    font-size: 9px;
+  }
+
+  .main-content {
+    padding: 12px;
+  }
+
+  .camera-workspace {
+    grid-template-areas:
+      "person camera gauge";
+
+    grid-template-columns:
+      220px
+      minmax(0, 1fr)
+      72px;
+
+    grid-template-rows:
+      minmax(520px, 72vh);
+  }
+
+  .person-panel {
+    display: flex;
+    flex-direction: column;
+
+    gap: 10px;
+
+    padding: 13px;
+
+    border-right:
+      1px solid rgba(255, 255, 255, 0.14);
+
+    border-bottom: 0;
+  }
+
+  .compact-field label {
+    font-size: 11px;
+  }
+
+  .compact-field input,
+  .compact-field select {
+    min-height: 41px;
+
+    padding: 8px;
+
+    font-size: 12px;
+  }
+
+  .camera-stage {
+    min-height: 520px;
+  }
+
+  .camera-toolbar {
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+
+    gap: 7px;
+
+    padding: 7px;
+  }
+
+  .camera-button {
+    min-height: 34px;
+
+    padding: 6px 9px;
+
+    font-size: 10px;
+  }
+
+  .capture-button {
+    flex-basis: 56px;
+
+    width: 56px;
+    height: 56px;
+  }
+
+  .capture-button span {
+    width: 40px;
+    height: 40px;
+  }
+
+  .gauge-panel {
+    width: 72px;
+    min-width: 72px;
+
+    padding: 8px 5px;
+  }
+
+  .gauge-value {
+    min-height: 42px;
+
+    font-size: 10px;
+  }
+
+  .gauge-track {
+    right: 9px;
+
+    width: 20px;
+  }
+
+  .scale-number {
+    font-size: 9px;
+  }
+
+  .gauge-unit {
+    font-size: 10px;
+  }
+
+  .form-card,
+  .round-card {
+    padding: 11px;
+  }
+
+  .form-grid {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+
+    gap: 10px;
+  }
+
+  .measurement-group {
+    grid-column: auto;
+  }
+
+  .field-group label,
+  .field-group legend {
+    font-size: 11px;
+  }
+
+  .field-group select,
+  .field-group input {
+    min-height: 42px;
+
+    font-size: 14px;
+  }
+
+  .selected-capture-panel {
+    grid-template-columns:
+      100px
+      minmax(0, 1fr)
+      auto;
+
+    padding: 9px;
+  }
+
+  .selected-capture-image-wrap {
+    width: 100px;
+    height: 72px;
+  }
+
+}
+
+
+/************************************************************
+ * Wide Desktop
+ ************************************************************/
+
+@media (min-width: 1100px) {
+
+  .camera-workspace {
+    grid-template-columns:
+      250px
+      minmax(0, 1fr)
+      82px;
+
+    grid-template-rows:
+      minmax(600px, 76vh);
+  }
+
+  .camera-stage {
+    min-height: 600px;
+  }
+
+  .person-panel {
+    padding: 16px;
+  }
+
+  .gauge-panel {
+    width: 82px;
+    min-width: 82px;
+  }
+
+  .gauge-value {
+    font-size: 11px;
+  }
+
+}
+
+
+/************************************************************
+ * Mobile Landscape
+ ************************************************************/
+
+@media (
+  max-width: 900px
+) and (
+  orientation: landscape
+) {
+
+  .camera-workspace {
+    grid-template-areas:
+      "person camera gauge";
+
+    grid-template-columns:
+      190px
+      minmax(0, 1fr)
+      54px;
+
+    grid-template-rows:
+      minmax(340px, calc(100dvh - 115px));
+  }
+
+  .person-panel {
+    display: flex;
+    flex-direction: column;
+
+    gap: 5px;
+
+    overflow-y: auto;
+
+    padding: 7px;
+
+    border-right:
+      1px solid rgba(255, 255, 255, 0.14);
+
+    border-bottom: 0;
+  }
+
+  .compact-field input,
+  .compact-field select {
+    min-height: 33px;
+
+    font-size: 10px;
+  }
+
+  .camera-stage {
+    min-height: 340px;
+  }
+
+  .gauge-panel {
+    width: 54px;
+    min-width: 54px;
+  }
+
+}
+
+
+/************************************************************
+ * Reduced Motion
+ ************************************************************/
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+
+    transition-duration: 0.01ms !important;
+  }
+
+}
+
