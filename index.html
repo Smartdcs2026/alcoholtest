@@ -134,6 +134,48 @@
 
         <!-- กล้องและแถบด้านข้าง -->
         <section class="camera-workspace">
+          <section
+  id="selectedCapturePanel"
+  class="selected-capture-panel"
+  hidden
+>
+
+  <div class="selected-capture-image-wrap">
+
+    <img
+      id="selectedCaptureImage"
+      alt="ภาพหลักฐานที่เลือก"
+    >
+
+  </div>
+
+
+  <div class="selected-capture-content">
+
+    <strong>
+      ภาพหลักฐานที่เลือก
+    </strong>
+
+    <span id="selectedCaptureMeta">
+      -
+    </span>
+
+    <small>
+      รอบถัดไปจะใช้ภาพนี้กำหนดพื้นที่เบลอ
+    </small>
+
+  </div>
+
+
+  <button
+    id="removeSelectedCaptureButton"
+    class="remove-capture-button"
+    type="button"
+  >
+    ลบภาพ
+  </button>
+
+</section>
 
           <!-- แถบซ้าย -->
           <aside class="person-panel">
@@ -247,7 +289,14 @@
             id="cameraStage"
             class="camera-stage"
           >
-
+        <div
+  id="cameraStatus"
+  class="camera-status loading"
+  role="status"
+  aria-live="polite"
+>
+  กำลังเตรียมกล้อง...
+</div>
             <video
               id="cameraVideo"
               autoplay
@@ -261,21 +310,21 @@
             ></canvas>
 
             <div
-              id="cameraPlaceholder"
-              class="camera-placeholder"
-            >
-              <div class="camera-placeholder-icon">
-                ◉
-              </div>
+  id="cameraPlaceholder"
+  class="camera-placeholder"
+>
+  <div class="camera-placeholder-icon">
+    ◉
+  </div>
 
-              <strong>
-                พื้นที่กล้อง
-              </strong>
+  <strong>
+    กำลังเปิดกล้อง
+  </strong>
 
-              <span>
-                ระบบเปิดกล้องอัตโนมัติจะเพิ่มในรอบถัดไป
-              </span>
-            </div>
+  <span>
+    กรุณาอนุญาตสิทธิ์กล้องเมื่อเบราว์เซอร์สอบถาม
+  </span>
+</div>
 
 
             <div
@@ -287,25 +336,67 @@
 
             <div class="camera-toolbar">
 
-              <button
-                id="openCameraButton"
-                class="camera-button secondary"
-                type="button"
-                disabled
-              >
-                เปิดกล้อง
-              </button>
+  <button
+    id="openCameraButton"
+    class="camera-button secondary"
+    type="button"
+    disabled
+  >
+    เปิดกล้อง
+  </button>
 
-              <button
-                id="captureButton"
-                class="capture-button"
-                type="button"
-                disabled
-                aria-label="ถ่ายภาพ"
-              >
-                <span></span>
-              </button>
 
+  <button
+    id="torchButton"
+    class="camera-button secondary"
+    type="button"
+    hidden
+    disabled
+  >
+    เปิดไฟ
+  </button>
+
+
+  <button
+    id="captureButton"
+    class="capture-button"
+    type="button"
+    disabled
+    aria-label="ถ่ายภาพ"
+  >
+    <span></span>
+  </button>
+
+
+  <button
+    id="switchCameraButton"
+    class="camera-button secondary"
+    type="button"
+    disabled
+  >
+    สลับกล้อง
+  </button>
+
+
+  <button
+    id="fallbackCameraButton"
+    class="camera-button secondary"
+    type="button"
+    disabled
+  >
+    ถ่ายสำรอง
+  </button>
+
+</div>
+
+
+<input
+  id="fallbackCameraInput"
+  class="file-input-hidden"
+  type="file"
+  accept="image/*"
+  capture="environment"
+>
               <button
                 id="switchCameraButton"
                 class="camera-button secondary"
@@ -544,10 +635,78 @@
 
   </div>
 
+<div
+  id="capturePreviewModal"
+  class="capture-preview-modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="capturePreviewTitle"
+  hidden
+>
 
-  <script src="config.js"></script>
-  <script src="api.js"></script>
-  <script src="app.js"></script>
+  <div class="capture-preview-card">
+
+    <div class="capture-preview-header">
+
+      <div>
+        <h2 id="capturePreviewTitle">
+          ตรวจสอบภาพ
+        </h2>
+
+        <p>
+          ตรวจสอบให้เห็นผู้ถูกตรวจและเครื่องวัดชัดเจน
+        </p>
+      </div>
+
+    </div>
+
+
+    <div class="capture-preview-body">
+
+      <img
+        id="capturePreviewImage"
+        alt="ภาพที่ถ่ายจากกล้อง"
+      >
+
+    </div>
+
+
+    <div
+      id="capturePreviewMeta"
+      class="capture-preview-meta"
+    >
+      -
+    </div>
+
+
+    <div class="capture-preview-actions">
+
+      <button
+        id="retakeCaptureButton"
+        class="preview-secondary-button"
+        type="button"
+      >
+        ถ่ายใหม่
+      </button>
+
+      <button
+        id="acceptCaptureButton"
+        class="preview-primary-button"
+        type="button"
+      >
+        ใช้ภาพนี้
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+ <script src="config.js"></script>
+<script src="api.js"></script>
+<script src="image-processor.js"></script>
+<script src="app.js"></script>
+<script src="camera.js"></script>
 
 </body>
 </html>
