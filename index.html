@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -18,6 +19,21 @@
     content="ระบบบันทึกการตรวจวัดปริมาณแอลกอฮอล์ก่อนเข้าพื้นที่คลังสินค้า"
   >
 
+  <meta
+    name="mobile-web-app-capable"
+    content="yes"
+  >
+
+  <meta
+    name="apple-mobile-web-app-capable"
+    content="yes"
+  >
+
+  <meta
+    name="apple-mobile-web-app-status-bar-style"
+    content="black-translucent"
+  >
+
   <title>
     ระบบตรวจวัดปริมาณแอลกอฮอล์
   </title>
@@ -32,11 +48,17 @@
 
   <div class="app-shell">
 
-    <!-- แถบด้านบน -->
+    <!-- ==================================================
+         แถบด้านบน
+    =================================================== -->
     <header class="topbar">
 
       <div class="topbar-title">
-        <span class="app-icon">
+
+        <span
+          class="app-icon"
+          aria-hidden="true"
+        >
           %
         </span>
 
@@ -49,13 +71,16 @@
             ก่อนเข้าพื้นที่คลังสินค้า
           </p>
         </div>
+
       </div>
+
 
       <div class="topbar-info">
 
         <time
           id="appDateTime"
           class="datetime"
+          datetime=""
         >
           --/--/---- --:--:--
         </time>
@@ -63,6 +88,7 @@
         <span
           id="connectionBadge"
           class="connection-badge is-offline"
+          role="status"
         >
           กำลังตรวจสอบ
         </span>
@@ -72,7 +98,9 @@
     </header>
 
 
-    <!-- สถานะระบบ -->
+    <!-- ==================================================
+         สถานะการเชื่อมต่อระบบ
+    =================================================== -->
     <section class="status-section">
 
       <div
@@ -95,19 +123,26 @@
     </section>
 
 
-    <!-- แถบเตือนเมื่อเกิน 1 Mg% -->
+    <!-- ==================================================
+         แถบแจ้งเตือนเมื่อค่าเกินเกณฑ์
+    =================================================== -->
     <section
       id="alertBanner"
       class="alert-banner"
       role="alert"
+      aria-live="assertive"
       hidden
     >
 
-      <div class="alert-symbol">
+      <div
+        class="alert-symbol"
+        aria-hidden="true"
+      >
         !
       </div>
 
       <div class="alert-content">
+
         <strong>
           ห้ามเข้าพื้นที่ / ห้ามปฏิบัติงาน
         </strong>
@@ -119,11 +154,15 @@
           </b>
           มากกว่าเกณฑ์ที่กำหนด
         </span>
+
       </div>
 
     </section>
 
 
+    <!-- ==================================================
+         เนื้อหาหลัก
+    =================================================== -->
     <main class="main-content">
 
       <form
@@ -132,67 +171,30 @@
         novalidate
       >
 
-        <!-- กล้องและแถบด้านข้าง -->
+        <!-- ==============================================
+             พื้นที่กล้องและข้อมูลบุคคล
+        =============================================== -->
         <section class="camera-workspace">
-          <section
-  id="selectedCapturePanel"
-  class="selected-capture-panel"
-  hidden
->
 
-  <div class="selected-capture-image-wrap">
-
-    <img
-      id="selectedCaptureImage"
-      alt="ภาพหลักฐานที่เลือก"
-    >
-
-  </div>
-
-
-  <div class="selected-capture-content">
-
-    <strong>
-      ภาพหลักฐานที่เลือก
-    </strong>
-
-    <span id="selectedCaptureMeta">
-      -
-    </span>
-
-    <small>
-      รอบถัดไปจะใช้ภาพนี้กำหนดพื้นที่เบลอ
-    </small>
-
-  </div>
-
-
-  <button
-    id="removeSelectedCaptureButton"
-    class="remove-capture-button"
-    type="button"
-  >
-    ลบภาพ
-  </button>
-
-</section>
-
-          <!-- แถบซ้าย -->
+          <!-- แถบข้อมูลด้านซ้าย -->
           <aside class="person-panel">
 
             <div class="compact-field">
+
               <label for="personTypeSelect">
-                ประเภท
+                ประเภทบุคคล
               </label>
 
               <select
                 id="personTypeSelect"
+                name="personType"
                 required
               >
                 <option value="">
                   กำลังโหลด...
                 </option>
               </select>
+
             </div>
 
 
@@ -201,31 +203,38 @@
               class="compact-field"
               hidden
             >
+
               <label for="personTypeOther">
                 ระบุประเภท
               </label>
 
               <input
                 id="personTypeOther"
+                name="personTypeOther"
                 type="text"
                 maxlength="100"
                 placeholder="ประเภทอื่น"
               >
+
             </div>
 
 
             <div class="compact-field">
+
               <label for="personName">
                 ชื่อผู้ถูกตรวจ
               </label>
 
               <input
                 id="personName"
+                name="personName"
                 type="text"
                 maxlength="200"
                 placeholder="ชื่อ-นามสกุล"
+                autocomplete="off"
                 required
               >
+
             </div>
 
 
@@ -234,16 +243,20 @@
               class="compact-field"
               hidden
             >
+
               <label for="companyInput">
                 ชื่อบริษัท
               </label>
 
               <input
                 id="companyInput"
+                name="company"
                 type="text"
                 maxlength="200"
-                placeholder="บริษัท"
+                placeholder="ชื่อบริษัท"
+                autocomplete="off"
               >
+
             </div>
 
 
@@ -252,15 +265,20 @@
               class="compact-field"
               hidden
             >
+
               <label for="busLineSelect">
                 สายรถ
               </label>
 
-              <select id="busLineSelect">
+              <select
+                id="busLineSelect"
+                name="busLine"
+              >
                 <option value="">
                   เลือกสายรถ
                 </option>
               </select>
+
             </div>
 
 
@@ -269,16 +287,20 @@
               class="compact-field"
               hidden
             >
+
               <label for="busLineOther">
                 สายรถอื่น
               </label>
 
               <input
                 id="busLineOther"
+                name="busLineOther"
                 type="text"
                 maxlength="150"
                 placeholder="ระบุสายรถ"
+                autocomplete="off"
               >
+
             </div>
 
           </aside>
@@ -288,45 +310,58 @@
           <section
             id="cameraStage"
             class="camera-stage"
+            aria-label="พื้นที่กล้องถ่ายภาพหลักฐาน"
           >
-        <div
-  id="cameraStatus"
-  class="camera-status loading"
-  role="status"
-  aria-live="polite"
->
-  กำลังเตรียมกล้อง...
-</div>
+
+            <div
+              id="cameraStatus"
+              class="camera-status loading"
+              role="status"
+              aria-live="polite"
+            >
+              กำลังเตรียมกล้อง...
+            </div>
+
+
             <video
               id="cameraVideo"
               autoplay
               muted
               playsinline
+              aria-label="ภาพจากกล้อง"
             ></video>
+
 
             <canvas
               id="captureCanvas"
               hidden
             ></canvas>
 
+
             <div
-  id="cameraPlaceholder"
-  class="camera-placeholder"
->
-  <div class="camera-placeholder-icon">
-    ◉
-  </div>
+              id="cameraPlaceholder"
+              class="camera-placeholder"
+            >
 
-  <strong>
-    กำลังเปิดกล้อง
-  </strong>
+              <div
+                class="camera-placeholder-icon"
+                aria-hidden="true"
+              >
+                ◉
+              </div>
 
-  <span>
-    กรุณาอนุญาตสิทธิ์กล้องเมื่อเบราว์เซอร์สอบถาม
-  </span>
-</div>
+              <strong>
+                กำลังเปิดกล้อง
+              </strong>
+
+              <span>
+                กรุณาอนุญาตสิทธิ์กล้องเมื่อเบราว์เซอร์สอบถาม
+              </span>
+
+            </div>
 
 
+            <!-- ใช้สำหรับแสดงกรอบพื้นที่เบลอในรอบถัดไป -->
             <div
               id="blurOverlay"
               class="blur-overlay"
@@ -334,69 +369,42 @@
             ></div>
 
 
+            <!-- ปุ่มควบคุมกล้อง -->
             <div class="camera-toolbar">
 
-  <button
-    id="openCameraButton"
-    class="camera-button secondary"
-    type="button"
-    disabled
-  >
-    เปิดกล้อง
-  </button>
+              <button
+                id="openCameraButton"
+                class="camera-button secondary"
+                type="button"
+                disabled
+              >
+                เปิดกล้อง
+              </button>
 
 
-  <button
-    id="torchButton"
-    class="camera-button secondary"
-    type="button"
-    hidden
-    disabled
-  >
-    เปิดไฟ
-  </button>
+              <button
+                id="torchButton"
+                class="camera-button secondary"
+                type="button"
+                hidden
+                disabled
+              >
+                เปิดไฟ
+              </button>
 
 
-  <button
-    id="captureButton"
-    class="capture-button"
-    type="button"
-    disabled
-    aria-label="ถ่ายภาพ"
-  >
-    <span></span>
-  </button>
+              <button
+                id="captureButton"
+                class="capture-button"
+                type="button"
+                aria-label="ถ่ายภาพ"
+                title="ถ่ายภาพ"
+                disabled
+              >
+                <span aria-hidden="true"></span>
+              </button>
 
 
-  <button
-    id="switchCameraButton"
-    class="camera-button secondary"
-    type="button"
-    disabled
-  >
-    สลับกล้อง
-  </button>
-
-
-  <button
-    id="fallbackCameraButton"
-    class="camera-button secondary"
-    type="button"
-    disabled
-  >
-    ถ่ายสำรอง
-  </button>
-
-</div>
-
-
-<input
-  id="fallbackCameraInput"
-  class="file-input-hidden"
-  type="file"
-  accept="image/*"
-  capture="environment"
->
               <button
                 id="switchCameraButton"
                 class="camera-button secondary"
@@ -406,7 +414,29 @@
                 สลับกล้อง
               </button>
 
+
+              <button
+                id="fallbackCameraButton"
+                class="camera-button secondary"
+                type="button"
+                disabled
+              >
+                ถ่ายสำรอง
+              </button>
+
             </div>
+
+
+            <!-- กล้องสำรองสำหรับ Browser ที่เปิดกล้องสดไม่ได้ -->
+            <input
+              id="fallbackCameraInput"
+              class="file-input-hidden"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              tabindex="-1"
+              aria-hidden="true"
+            >
 
           </section>
 
@@ -415,14 +445,17 @@
           <aside
             id="gaugePanel"
             class="gauge-panel level-safe"
+            aria-label="แถบแสดงระดับแอลกอฮอล์"
           >
 
             <div
               id="gaugeValue"
               class="gauge-value"
+              aria-live="polite"
             >
               0.00 Mg%
             </div>
+
 
             <div class="gauge-scale">
 
@@ -465,6 +498,7 @@
 
             </div>
 
+
             <div class="gauge-unit">
               Mg%
             </div>
@@ -474,24 +508,77 @@
         </section>
 
 
-        <!-- ข้อมูลการตรวจ -->
+        <!-- ==============================================
+             ภาพหลักฐานที่เลือก
+        =============================================== -->
+        <section
+          id="selectedCapturePanel"
+          class="selected-capture-panel"
+          aria-live="polite"
+          hidden
+        >
+
+          <div class="selected-capture-image-wrap">
+
+            <img
+              id="selectedCaptureImage"
+              alt="ภาพหลักฐานที่เลือก"
+            >
+
+          </div>
+
+
+          <div class="selected-capture-content">
+
+            <strong>
+              ภาพหลักฐานที่เลือก
+            </strong>
+
+            <span id="selectedCaptureMeta">
+              -
+            </span>
+
+            <small>
+              ภาพนี้จะใช้กำหนดพื้นที่เบลอก่อนเพิ่มรอบตรวจ
+            </small>
+
+          </div>
+
+
+          <button
+            id="removeSelectedCaptureButton"
+            class="remove-capture-button"
+            type="button"
+          >
+            ลบภาพ
+          </button>
+
+        </section>
+
+
+        <!-- ==============================================
+             ข้อมูลการตรวจวัด
+        =============================================== -->
         <section class="form-card">
 
           <div class="form-grid">
 
             <div class="field-group">
+
               <label for="inspectorSelect">
                 ผู้ตรวจวัด
               </label>
 
               <select
                 id="inspectorSelect"
+                name="inspector"
                 required
               >
                 <option value="">
                   กำลังโหลด...
                 </option>
               </select>
+
             </div>
 
 
@@ -504,6 +591,7 @@
               <div class="segmented-control">
 
                 <label>
+
                   <input
                     type="radio"
                     name="checkpoint"
@@ -514,9 +602,12 @@
                   <span>
                     ป้อมหน้า
                   </span>
+
                 </label>
 
+
                 <label>
+
                   <input
                     type="radio"
                     name="checkpoint"
@@ -526,6 +617,7 @@
                   <span>
                     ป้อมล่าง
                   </span>
+
                 </label>
 
               </div>
@@ -543,12 +635,15 @@
 
                 <input
                   id="measurementInput"
+                  name="measurement"
                   type="number"
                   inputmode="decimal"
                   min="0"
                   max="999"
                   step="0.01"
                   value="0.00"
+                  placeholder="0.00"
+                  autocomplete="off"
                   required
                 >
 
@@ -565,12 +660,15 @@
         </section>
 
 
-        <!-- รายการรอบตรวจ -->
+        <!-- ==============================================
+             รายการรอบตรวจ
+        =============================================== -->
         <section class="round-card">
 
           <div class="section-heading">
 
             <div>
+
               <h2>
                 รอบการตรวจวัด
               </h2>
@@ -578,7 +676,9 @@
               <p>
                 หนึ่งรอบต้องมีค่าตรวจวัดและภาพหลักฐาน
               </p>
+
             </div>
+
 
             <button
               id="addRoundButton"
@@ -595,6 +695,7 @@
           <div
             id="roundsList"
             class="rounds-list"
+            aria-live="polite"
           >
 
             <div class="empty-state">
@@ -606,7 +707,9 @@
         </section>
 
 
-        <!-- ปุ่มบันทึก -->
+        <!-- ==============================================
+             ปุ่มดำเนินการ
+        =============================================== -->
         <section class="action-bar">
 
           <button
@@ -635,78 +738,91 @@
 
   </div>
 
-<div
-  id="capturePreviewModal"
-  class="capture-preview-modal"
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="capturePreviewTitle"
-  hidden
->
 
-  <div class="capture-preview-card">
+  <!-- ====================================================
+       หน้าต่างตรวจสอบภาพหลังถ่าย
+  ===================================================== -->
+  <div
+    id="capturePreviewModal"
+    class="capture-preview-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="capturePreviewTitle"
+    hidden
+  >
 
-    <div class="capture-preview-header">
+    <div class="capture-preview-card">
 
-      <div>
-        <h2 id="capturePreviewTitle">
-          ตรวจสอบภาพ
-        </h2>
+      <div class="capture-preview-header">
 
-        <p>
-          ตรวจสอบให้เห็นผู้ถูกตรวจและเครื่องวัดชัดเจน
-        </p>
+        <div>
+
+          <h2 id="capturePreviewTitle">
+            ตรวจสอบภาพ
+          </h2>
+
+          <p>
+            ตรวจสอบให้เห็นผู้ถูกตรวจและเครื่องวัดชัดเจน
+          </p>
+
+        </div>
+
       </div>
 
-    </div>
+
+      <div class="capture-preview-body">
+
+        <img
+          id="capturePreviewImage"
+          alt="ภาพที่ถ่ายจากกล้อง"
+        >
+
+      </div>
 
 
-    <div class="capture-preview-body">
-
-      <img
-        id="capturePreviewImage"
-        alt="ภาพที่ถ่ายจากกล้อง"
+      <div
+        id="capturePreviewMeta"
+        class="capture-preview-meta"
       >
-
-    </div>
-
-
-    <div
-      id="capturePreviewMeta"
-      class="capture-preview-meta"
-    >
-      -
-    </div>
+        -
+      </div>
 
 
-    <div class="capture-preview-actions">
+      <div class="capture-preview-actions">
 
-      <button
-        id="retakeCaptureButton"
-        class="preview-secondary-button"
-        type="button"
-      >
-        ถ่ายใหม่
-      </button>
+        <button
+          id="retakeCaptureButton"
+          class="preview-secondary-button"
+          type="button"
+        >
+          ถ่ายใหม่
+        </button>
 
-      <button
-        id="acceptCaptureButton"
-        class="preview-primary-button"
-        type="button"
-      >
-        ใช้ภาพนี้
-      </button>
+        <button
+          id="acceptCaptureButton"
+          class="preview-primary-button"
+          type="button"
+        >
+          ใช้ภาพนี้
+        </button>
+
+      </div>
 
     </div>
 
   </div>
 
-</div>
- <script src="config.js"></script>
-<script src="api.js"></script>
-<script src="image-processor.js"></script>
-<script src="app.js"></script>
-<script src="camera.js"></script>
+
+  <!-- ====================================================
+       JavaScript
+       ลำดับไฟล์ห้ามสลับ
+  ===================================================== -->
+  <script src="config.js"></script>
+  <script src="api.js"></script>
+  <script src="image-processor.js"></script>
+  <script src="app.js"></script>
+  <script src="camera.js"></script>
 
 </body>
 </html>
+
