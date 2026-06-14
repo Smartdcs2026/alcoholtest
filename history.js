@@ -1,30 +1,31 @@
 /************************************************************
  * history.js
- * Login + ปฏิทิน + ประวัติรายวัน + ดูภาพแบบมีสิทธิ์
+ * ระบบ Login + ปฏิทิน + ประวัติรายวัน + ดูภาพ
+ * เวอร์ชันปรับ UI ใหม่แบบ self-contained
  *
- * ต้องโหลดหลัง:
- * - SweetAlert2
- * - config.js
- * - api.js
+ * จุดสำคัญ:
+ * - Inject CSS จากไฟล์นี้โดยตรง ป้องกัน CSS ไม่ถูกโหลด
+ * - ใช้ SweetAlert2 เป็นกรอบ Modal
+ * - แยกชื่อ Class ด้วย ahx- ป้องกันชนกับ CSS ระบบหลัก
+ * - รองรับมือถือและคอมพิวเตอร์
  ************************************************************/
 
 (function (window, document) {
   'use strict';
 
-  const API =
-    window.AlcoholAPI;
-
-  const CONFIG =
-    window.APP_CONFIG || {};
+  const API = window.AlcoholAPI;
+  const CONFIG = window.APP_CONFIG || {};
 
   const SESSION_KEY =
-    'alcohol_history_session_v1';
+    'alcohol_history_session_v2';
 
   const LAST_MONTH_KEY =
-    'alcohol_history_last_month_v1';
+    'alcohol_history_last_month_v2';
 
-  const PAGE_SIZE =
-    20;
+  const STYLE_ID =
+    'alcoholHistoryV2Styles';
+
+  const PAGE_SIZE = 20;
 
   const AUTH_CODES = [
     'AUTH_REQUIRED',
@@ -49,37 +50,26 @@
   ];
 
   const state = {
-    initialized:
-      false,
+    initialized: false,
+    opening: false,
 
-    opening:
-      false,
+    token: '',
+    name: '',
+    expiresAtIso: '',
 
-    token:
-      '',
+    currentMonth: '',
+    currentDate: '',
+    currentPage: 1,
 
-    name:
-      '',
+    monthData: null,
+    imageDataUrl: '',
 
-    expiresAtIso:
-      '',
-
-    currentMonth:
-      '',
-
-    currentDate:
-      '',
-
-    currentPage:
-      1,
-
-    imageDataUrl:
-      ''
+    cameraWasReady: false
   };
 
 
   /************************************************************
-   * Basic Helpers
+   * Helpers
    ************************************************************/
 
   function cleanText(value) {
@@ -94,35 +84,17 @@
 
   function escapeHtml(value) {
     return cleanText(value)
-      .replace(
-        /&/g,
-        '&amp;'
-      )
-      .replace(
-        /</g,
-        '&lt;'
-      )
-      .replace(
-        />/g,
-        '&gt;'
-      )
-      .replace(
-        /"/g,
-        '&quot;'
-      )
-      .replace(
-        /'/g,
-        '&#039;'
-      );
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
 
   function escapeAttribute(value) {
     return escapeHtml(value)
-      .replace(
-        /`/g,
-        '&#096;'
-      );
+      .replace(/`/g, '&#096;');
   }
 
 
@@ -130,11 +102,11 @@
     value,
     fallback
   ) {
-    const parsed =
+    const number =
       Number(value);
 
-    return Number.isFinite(parsed)
-      ? parsed
+    return Number.isFinite(number)
+      ? number
       : fallback;
   }
 
@@ -186,6 +158,12 @@
         error.code
       ).toUpperCase()
     );
+  }
+
+
+  function getElement(id) {
+    return document
+      .getElementById(id);
   }
 
 
@@ -290,10 +268,10 @@
         Date.UTC(
           parsed.year,
           parsed.month -
-            1 +
-            Number(
-              amount || 0
-            ),
+          1 +
+          Number(
+            amount || 0
+          ),
           1
         )
       );
@@ -398,7 +376,7 @@
         );
 
     if (!match) {
-      return value;
+      return cleanText(value);
     }
 
     return (
@@ -412,22 +390,25 @@
 
 
   /************************************************************
-   * Session Storage
+   * Session
    ************************************************************/
 
   function saveSession(data) {
     state.token =
       cleanText(
+        data &&
         data.token
       );
 
     state.name =
       cleanText(
+        data &&
         data.name
       );
 
     state.expiresAtIso =
       cleanText(
+        data &&
         data.expiresAtIso
       );
 
@@ -435,6 +416,7 @@
       window.sessionStorage
         .setItem(
           SESSION_KEY,
+
           JSON.stringify({
             token:
               state.token,
@@ -449,7 +431,7 @@
 
     } catch (error) {
       console.warn(
-        'บันทึก Session ไม่สำเร็จ',
+        'ไม่สามารถบันทึก Session ได้',
         error
       );
     }
@@ -488,6 +470,7 @@
 
       if (!state.token) {
         clearSession();
+
         return false;
       }
 
@@ -504,9 +487,10 @@
             expiresAt
           ) &&
           expiresAt <=
-            Date.now()
+          Date.now()
         ) {
           clearSession();
+
           return false;
         }
       }
@@ -515,20 +499,16 @@
 
     } catch (error) {
       clearSession();
+
       return false;
     }
   }
 
 
   function clearSession() {
-    state.token =
-      '';
-
-    state.name =
-      '';
-
-    state.expiresAtIso =
-      '';
+    state.token = '';
+    state.name = '';
+    state.expiresAtIso = '';
 
     try {
       window.sessionStorage
@@ -562,12 +542,12 @@
   }
 
 
-  function saveLastMonth(value) {
+  function saveLastMonth(monthKey) {
     try {
       window.sessionStorage
         .setItem(
           LAST_MONTH_KEY,
-          value
+          monthKey
         );
 
     } catch (error) {
@@ -577,54 +557,2969 @@
 
 
   /************************************************************
+   * CSS Injection
+   ************************************************************/
+
+  function injectStyles() {
+    if (
+      getElement(
+        STYLE_ID
+      )
+    ) {
+      return;
+    }
+
+    const style =
+      document.createElement(
+        'style'
+      );
+
+    style.id =
+      STYLE_ID;
+
+    style.textContent = `
+      :root {
+        --ahx-primary: #0e3b55;
+        --ahx-primary-2: #176589;
+        --ahx-bg: #eef3f6;
+        --ahx-surface: #ffffff;
+        --ahx-text: #18313e;
+        --ahx-muted: #6c7f89;
+        --ahx-border: #d4e0e6;
+        --ahx-success: #138455;
+        --ahx-danger: #d62e2e;
+        --ahx-warning: #d99500;
+        --ahx-shadow:
+          0 22px 70px
+          rgba(5, 29, 43, .34);
+      }
+
+
+      #historyAccessButton.ahx-history-button {
+        display:
+          inline-flex !important;
+
+        align-items:
+          center !important;
+
+        justify-content:
+          center !important;
+
+        gap:
+          4px !important;
+
+        min-height:
+          22px !important;
+
+        padding:
+          3px 7px !important;
+
+        border:
+          1px solid
+          rgba(
+            255,
+            255,
+            255,
+            .34
+          ) !important;
+
+        border-radius:
+          999px !important;
+
+        color:
+          #ffffff !important;
+
+        background:
+          rgba(
+            255,
+            255,
+            255,
+            .13
+          ) !important;
+
+        font-size:
+          8px !important;
+
+        font-weight:
+          800 !important;
+
+        line-height:
+          1 !important;
+
+        white-space:
+          nowrap !important;
+
+        box-shadow:
+          none !important;
+      }
+
+
+      #historyAccessButton.ahx-history-button:active {
+        transform:
+          scale(.96);
+
+        background:
+          rgba(
+            255,
+            255,
+            255,
+            .25
+          ) !important;
+      }
+
+
+      #historyAccessButton.ahx-history-button:disabled {
+        opacity:
+          .55 !important;
+      }
+
+
+      .ahx-login-popup,
+      .ahx-main-popup {
+        padding:
+          0 !important;
+
+        overflow:
+          hidden !important;
+
+        border:
+          1px solid
+          var(--ahx-border) !important;
+
+        border-radius:
+          18px !important;
+
+        background:
+          var(--ahx-bg) !important;
+
+        box-shadow:
+          var(--ahx-shadow) !important;
+      }
+
+
+      .ahx-login-popup {
+        width:
+          min(
+            92vw,
+            430px
+          ) !important;
+      }
+
+
+      .ahx-main-popup {
+        width:
+          min(
+            94vw,
+            920px
+          ) !important;
+
+        max-height:
+          94dvh !important;
+      }
+
+
+      .ahx-login-html,
+      .ahx-main-html {
+        margin:
+          0 !important;
+
+        padding:
+          0 !important;
+
+        color:
+          var(--ahx-text) !important;
+
+        text-align:
+          left !important;
+      }
+
+
+      .ahx-main-html {
+        max-height:
+          94dvh !important;
+
+        overflow:
+          auto !important;
+
+        overscroll-behavior:
+          contain;
+      }
+
+
+      .ahx-login-actions {
+        gap:
+          8px !important;
+
+        margin:
+          0 !important;
+
+        padding:
+          0 22px 22px !important;
+      }
+
+
+      .ahx-confirm-button,
+      .ahx-cancel-button {
+        min-width:
+          112px !important;
+
+        min-height:
+          42px !important;
+
+        margin:
+          0 !important;
+
+        padding:
+          8px 14px !important;
+
+        border:
+          0 !important;
+
+        border-radius:
+          10px !important;
+
+        font-size:
+          13px !important;
+
+        font-weight:
+          800 !important;
+      }
+
+
+      .ahx-confirm-button {
+        color:
+          #ffffff !important;
+
+        background:
+          linear-gradient(
+            135deg,
+            var(--ahx-primary-2),
+            var(--ahx-primary)
+          ) !important;
+      }
+
+
+      .ahx-cancel-button {
+        color:
+          #425965 !important;
+
+        background:
+          #e6ecef !important;
+      }
+
+
+      .ahx-validation-message {
+        margin:
+          0 22px 12px !important;
+
+        border-radius:
+          8px !important;
+
+        font-size:
+          12px !important;
+      }
+
+
+      .ahx-login-card {
+        padding:
+          24px 22px 14px;
+
+        background:
+          #ffffff;
+      }
+
+
+      .ahx-login-brand {
+        display:
+          flex;
+
+        align-items:
+          center;
+
+        gap:
+          12px;
+
+        margin-bottom:
+          22px;
+      }
+
+
+      .ahx-login-icon {
+        display:
+          grid;
+
+        place-items:
+          center;
+
+        flex:
+          0 0 48px;
+
+        width:
+          48px;
+
+        height:
+          48px;
+
+        border-radius:
+          14px;
+
+        color:
+          #ffffff;
+
+        background:
+          linear-gradient(
+            145deg,
+            var(--ahx-primary-2),
+            var(--ahx-primary)
+          );
+
+        font-size:
+          22px;
+
+        box-shadow:
+          0 10px 25px
+          rgba(
+            15,
+            83,
+            116,
+            .22
+          );
+      }
+
+
+      .ahx-login-brand h2 {
+        margin:
+          0;
+
+        color:
+          var(--ahx-text);
+
+        font-size:
+          19px;
+
+        line-height:
+          1.25;
+      }
+
+
+      .ahx-login-brand p {
+        margin:
+          4px 0 0;
+
+        color:
+          var(--ahx-muted);
+
+        font-size:
+          11px;
+
+        line-height:
+          1.4;
+      }
+
+
+      .ahx-field {
+        display:
+          grid;
+
+        gap:
+          6px;
+
+        margin-bottom:
+          13px;
+      }
+
+
+      .ahx-field label {
+        color:
+          #36515f;
+
+        font-size:
+          11px;
+
+        font-weight:
+          800;
+      }
+
+
+      .ahx-field input {
+        width:
+          100%;
+
+        height:
+          44px;
+
+        margin:
+          0;
+
+        padding:
+          9px 11px;
+
+        border:
+          1px solid
+          #c8d6dd;
+
+        border-radius:
+          10px;
+
+        outline:
+          none;
+
+        color:
+          var(--ahx-text);
+
+        background:
+          #ffffff;
+
+        font:
+          inherit;
+
+        font-size:
+          14px;
+
+        box-shadow:
+          none;
+      }
+
+
+      .ahx-field input:focus {
+        border-color:
+          #4c9ec3;
+
+        box-shadow:
+          0 0 0 3px
+          rgba(
+            76,
+            158,
+            195,
+            .14
+          );
+      }
+
+
+      .ahx-login-note {
+        display:
+          flex;
+
+        align-items:
+          flex-start;
+
+        gap:
+          7px;
+
+        margin-top:
+          4px;
+
+        padding:
+          9px 10px;
+
+        border-radius:
+          9px;
+
+        color:
+          #56707c;
+
+        background:
+          #f1f6f8;
+
+        font-size:
+          9px;
+
+        line-height:
+          1.45;
+      }
+
+
+      .ahx-app {
+        min-height:
+          420px;
+
+        background:
+          var(--ahx-bg);
+      }
+
+
+      .ahx-topbar {
+        position:
+          sticky;
+
+        top:
+          0;
+
+        z-index:
+          15;
+
+        display:
+          flex;
+
+        align-items:
+          center;
+
+        justify-content:
+          space-between;
+
+        gap:
+          10px;
+
+        min-height:
+          58px;
+
+        padding:
+          9px 12px;
+
+        color:
+          #ffffff;
+
+        background:
+          linear-gradient(
+            135deg,
+            #082d43,
+            #145a7a
+          );
+
+        box-shadow:
+          0 4px 15px
+          rgba(
+            5,
+            35,
+            52,
+            .22
+          );
+      }
+
+
+      .ahx-topbar-left,
+      .ahx-topbar-title {
+        display:
+          flex;
+
+        align-items:
+          center;
+
+        gap:
+          9px;
+
+        min-width:
+          0;
+      }
+
+
+      .ahx-topbar-title > div {
+        min-width:
+          0;
+      }
+
+
+      .ahx-topbar-logo {
+        display:
+          grid;
+
+        place-items:
+          center;
+
+        flex:
+          0 0 36px;
+
+        width:
+          36px;
+
+        height:
+          36px;
+
+        border:
+          1px solid
+          rgba(
+            255,
+            255,
+            255,
+            .32
+          );
+
+        border-radius:
+          10px;
+
+        background:
+          rgba(
+            255,
+            255,
+            255,
+            .10
+          );
+
+        font-size:
+          17px;
+      }
+
+
+      .ahx-topbar h2 {
+        margin:
+          0;
+
+        overflow:
+          hidden;
+
+        font-size:
+          14px;
+
+        line-height:
+          1.25;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+
+      .ahx-topbar p {
+        margin:
+          2px 0 0;
+
+        overflow:
+          hidden;
+
+        color:
+          rgba(
+            255,
+            255,
+            255,
+            .72
+          );
+
+        font-size:
+          8px;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+
+      .ahx-topbar-actions {
+        display:
+          flex;
+
+        align-items:
+          center;
+
+        gap:
+          5px;
+
+        flex:
+          0 0 auto;
+      }
+
+
+      .ahx-icon-button,
+      .ahx-text-button {
+        display:
+          inline-flex;
+
+        align-items:
+          center;
+
+        justify-content:
+          center;
+
+        min-height:
+          32px;
+
+        border:
+          1px solid
+          rgba(
+            255,
+            255,
+            255,
+            .28
+          );
+
+        border-radius:
+          8px;
+
+        color:
+          #ffffff;
+
+        background:
+          rgba(
+            255,
+            255,
+            255,
+            .11
+          );
+
+        font:
+          inherit;
+
+        font-size:
+          9px;
+
+        font-weight:
+          800;
+      }
+
+
+      .ahx-icon-button {
+        width:
+          32px;
+
+        padding:
+          0;
+
+        font-size:
+          18px;
+      }
+
+
+      .ahx-text-button {
+        padding:
+          5px 9px;
+      }
+
+
+      .ahx-text-button.danger {
+        color:
+          #ffe3e3;
+
+        border-color:
+          rgba(
+            255,
+            174,
+            174,
+            .42
+          );
+
+        background:
+          rgba(
+            178,
+            15,
+            15,
+            .28
+          );
+      }
+
+
+      .ahx-month-panel {
+        display:
+          grid;
+
+        grid-template-columns:
+          38px
+          minmax(0, 1fr)
+          38px;
+
+        align-items:
+          center;
+
+        gap:
+          8px;
+
+        padding:
+          9px 10px;
+
+        border-bottom:
+          1px solid
+          var(--ahx-border);
+
+        background:
+          #ffffff;
+      }
+
+
+      .ahx-month-panel button {
+        display:
+          grid;
+
+        place-items:
+          center;
+
+        width:
+          38px;
+
+        height:
+          36px;
+
+        padding:
+          0;
+
+        border:
+          1px solid
+          #ccd9df;
+
+        border-radius:
+          9px;
+
+        color:
+          var(--ahx-primary);
+
+        background:
+          #f4f8fa;
+
+        font:
+          inherit;
+
+        font-size:
+          24px;
+
+        font-weight:
+          700;
+      }
+
+
+      .ahx-month-panel button:disabled {
+        opacity:
+          .45;
+      }
+
+
+      .ahx-month-title {
+        min-width:
+          0;
+
+        text-align:
+          center;
+      }
+
+
+      .ahx-month-title strong {
+        display:
+          block;
+
+        color:
+          var(--ahx-primary);
+
+        font-size:
+          15px;
+
+        line-height:
+          1.25;
+      }
+
+
+      .ahx-month-title small {
+        display:
+          block;
+
+        margin-top:
+          2px;
+
+        overflow:
+          hidden;
+
+        color:
+          var(--ahx-muted);
+
+        font-size:
+          8px;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+
+      .ahx-summary-grid {
+        display:
+          grid;
+
+        grid-template-columns:
+          repeat(
+            6,
+            minmax(0, 1fr)
+          );
+
+        gap:
+          6px;
+
+        padding:
+          8px;
+      }
+
+
+      .ahx-summary-card {
+        display:
+          flex;
+
+        flex-direction:
+          column;
+
+        align-items:
+          center;
+
+        justify-content:
+          center;
+
+        min-width:
+          0;
+
+        min-height:
+          56px;
+
+        padding:
+          6px 4px;
+
+        border:
+          1px solid
+          var(--ahx-border);
+
+        border-radius:
+          10px;
+
+        background:
+          #ffffff;
+
+        text-align:
+          center;
+
+        box-shadow:
+          0 2px 8px
+          rgba(
+            16,
+            56,
+            80,
+            .05
+          );
+      }
+
+
+      .ahx-summary-card small {
+        overflow:
+          hidden;
+
+        width:
+          100%;
+
+        color:
+          var(--ahx-muted);
+
+        font-size:
+          7px;
+
+        font-weight:
+          700;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+
+      .ahx-summary-card strong {
+        display:
+          block;
+
+        margin-top:
+          3px;
+
+        overflow:
+          hidden;
+
+        width:
+          100%;
+
+        color:
+          var(--ahx-primary);
+
+        font-size:
+          14px;
+
+        font-weight:
+          900;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+
+      .ahx-summary-card.success {
+        border-color:
+          #b9dfcc;
+
+        background:
+          #f0fbf5;
+      }
+
+
+      .ahx-summary-card.success strong {
+        color:
+          var(--ahx-success);
+      }
+
+
+      .ahx-summary-card.danger {
+        border-color:
+          #efb8b8;
+
+        background:
+          #fff1f1;
+      }
+
+
+      .ahx-summary-card.danger strong {
+        color:
+          var(--ahx-danger);
+      }
+
+
+      .ahx-summary-card.warning {
+        border-color:
+          #ecd899;
+
+        background:
+          #fff9e8;
+      }
+
+
+      .ahx-summary-card.warning strong {
+        color:
+          #916d00;
+      }
+
+
+      .ahx-calendar-wrap {
+        margin:
+          0 8px 8px;
+
+        overflow:
+          hidden;
+
+        border:
+          1px solid
+          var(--ahx-border);
+
+        border-radius:
+          12px;
+
+        background:
+          #ffffff;
+      }
+
+
+      .ahx-weekdays,
+      .ahx-calendar-grid {
+        display:
+          grid;
+
+        grid-template-columns:
+          repeat(
+            7,
+            minmax(0, 1fr)
+          );
+      }
+
+
+      .ahx-weekdays {
+        border-bottom:
+          1px solid
+          var(--ahx-border);
+
+        background:
+          #f3f7f9;
+      }
+
+
+      .ahx-weekdays span {
+        padding:
+          7px 2px;
+
+        color:
+          #526a75;
+
+        font-size:
+          8px;
+
+        font-weight:
+          800;
+
+        text-align:
+          center;
+      }
+
+
+      .ahx-calendar-grid {
+        gap:
+          4px;
+
+        padding:
+          6px;
+      }
+
+
+      .ahx-calendar-empty {
+        min-height:
+          58px;
+      }
+
+
+      .ahx-calendar-day {
+        position:
+          relative;
+
+        display:
+          flex;
+
+        flex-direction:
+          column;
+
+        justify-content:
+          space-between;
+
+        min-width:
+          0;
+
+        min-height:
+          58px;
+
+        padding:
+          6px;
+
+        overflow:
+          hidden;
+
+        border:
+          1px solid
+          #dbe4e8;
+
+        border-radius:
+          9px;
+
+        color:
+          #284653;
+
+        background:
+          #f9fbfc;
+
+        font:
+          inherit;
+
+        text-align:
+          left;
+      }
+
+
+      .ahx-calendar-day:disabled {
+        opacity:
+          .48;
+      }
+
+
+      .ahx-calendar-day.has-data {
+        border-color:
+          #84b9d1;
+
+        background:
+          linear-gradient(
+            145deg,
+            #e9f6fc,
+            #ffffff
+          );
+
+        box-shadow:
+          inset 0 0 0 1px
+          rgba(
+            65,
+            147,
+            187,
+            .06
+          );
+      }
+
+
+      .ahx-calendar-day.has-deny {
+        border-color:
+          #e39191;
+
+        background:
+          linear-gradient(
+            145deg,
+            #fff0f0,
+            #ffffff
+          );
+      }
+
+
+      .ahx-calendar-day.images-deleted::after,
+      .ahx-calendar-day.image-issue::after {
+        position:
+          absolute;
+
+        right:
+          0;
+
+        bottom:
+          0;
+
+        left:
+          0;
+
+        height:
+          3px;
+
+        content:
+          "";
+      }
+
+
+      .ahx-calendar-day.images-deleted::after {
+        background:
+          #7f8b91;
+      }
+
+
+      .ahx-calendar-day.image-issue::after {
+        background:
+          var(--ahx-warning);
+      }
+
+
+      .ahx-day-number {
+        font-size:
+          13px;
+
+        font-weight:
+          900;
+
+        line-height:
+          1;
+      }
+
+
+      .ahx-day-badge {
+        position:
+          absolute;
+
+        top:
+          5px;
+
+        right:
+          5px;
+
+        min-width:
+          18px;
+
+        padding:
+          2px 5px;
+
+        border-radius:
+          999px;
+
+        color:
+          #ffffff;
+
+        background:
+          var(--ahx-primary-2);
+
+        font-size:
+          7px;
+
+        font-weight:
+          900;
+
+        line-height:
+          1.2;
+
+        text-align:
+          center;
+      }
+
+
+      .ahx-calendar-day.has-deny
+      .ahx-day-badge {
+        background:
+          var(--ahx-danger);
+      }
+
+
+      .ahx-day-footer {
+        display:
+          flex;
+
+        align-items:
+          center;
+
+        justify-content:
+          space-between;
+
+        gap:
+          4px;
+
+        margin-top:
+          auto;
+      }
+
+
+      .ahx-day-footer small {
+        overflow:
+          hidden;
+
+        color:
+          #66808d;
+
+        font-size:
+          6px;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+
+      .ahx-day-dots {
+        display:
+          flex;
+
+        gap:
+          3px;
+      }
+
+
+      .ahx-day-dots i,
+      .ahx-legend i {
+        display:
+          block;
+
+        width:
+          7px;
+
+        height:
+          7px;
+
+        border-radius:
+          50%;
+      }
+
+
+      .ahx-dot-data {
+        background:
+          var(--ahx-primary-2);
+      }
+
+
+      .ahx-dot-deny {
+        background:
+          var(--ahx-danger);
+      }
+
+
+      .ahx-dot-deleted {
+        background:
+          #7f8b91;
+      }
+
+
+      .ahx-dot-issue {
+        background:
+          var(--ahx-warning);
+      }
+
+
+      .ahx-legend {
+        display:
+          flex;
+
+        align-items:
+          center;
+
+        justify-content:
+          center;
+
+        flex-wrap:
+          wrap;
+
+        gap:
+          7px 13px;
+
+        padding:
+          2px 10px 11px;
+
+        color:
+          #5a717c;
+
+        font-size:
+          7px;
+
+        font-weight:
+          700;
+      }
+
+
+      .ahx-legend span {
+        display:
+          inline-flex;
+
+        align-items:
+          center;
+
+        gap:
+          4px;
+      }
+
+
+      .ahx-state {
+        grid-column:
+          1 / -1;
+
+        display:
+          flex;
+
+        flex-direction:
+          column;
+
+        align-items:
+          center;
+
+        justify-content:
+          center;
+
+        gap:
+          8px;
+
+        min-height:
+          190px;
+
+        padding:
+          20px;
+
+        color:
+          var(--ahx-muted);
+
+        font-size:
+          10px;
+
+        text-align:
+          center;
+      }
+
+
+      .ahx-state.error {
+        color:
+          var(--ahx-danger);
+      }
+
+
+      .ahx-spinner {
+        width:
+          28px;
+
+        height:
+          28px;
+
+        border:
+          3px solid
+          #d8e4e9;
+
+        border-top-color:
+          var(--ahx-primary-2);
+
+        border-radius:
+          50%;
+
+        animation:
+          ahx-spin
+          .7s
+          linear
+          infinite;
+      }
+
+
+      @keyframes ahx-spin {
+        to {
+          transform:
+            rotate(360deg);
+        }
+      }
+
+
+      .ahx-day-view {
+        min-height:
+          420px;
+      }
+
+
+      .ahx-back-button {
+        flex:
+          0 0 auto;
+
+        min-height:
+          32px;
+
+        padding:
+          5px 9px;
+
+        border:
+          1px solid
+          rgba(
+            255,
+            255,
+            255,
+            .28
+          );
+
+        border-radius:
+          8px;
+
+        color:
+          #ffffff;
+
+        background:
+          rgba(
+            255,
+            255,
+            255,
+            .11
+          );
+
+        font:
+          inherit;
+
+        font-size:
+          9px;
+
+        font-weight:
+          800;
+      }
+
+
+      .ahx-breakdown {
+        display:
+          grid;
+
+        gap:
+          6px;
+
+        padding:
+          0 8px 8px;
+      }
+
+
+      .ahx-breakdown-row {
+        display:
+          grid;
+
+        grid-template-columns:
+          85px
+          minmax(0, 1fr);
+
+        gap:
+          7px;
+
+        align-items:
+          start;
+
+        padding:
+          7px;
+
+        border:
+          1px solid
+          var(--ahx-border);
+
+        border-radius:
+          9px;
+
+        background:
+          #ffffff;
+      }
+
+
+      .ahx-breakdown-row > strong {
+        color:
+          #49616c;
+
+        font-size:
+          8px;
+
+        line-height:
+          1.5;
+      }
+
+
+      .ahx-chip-list {
+        display:
+          flex;
+
+        flex-wrap:
+          wrap;
+
+        gap:
+          4px;
+      }
+
+
+      .ahx-chip {
+        display:
+          inline-flex;
+
+        align-items:
+          center;
+
+        min-height:
+          22px;
+
+        padding:
+          3px 7px;
+
+        border:
+          1px solid
+          #cfe0e7;
+
+        border-radius:
+          999px;
+
+        color:
+          #385865;
+
+        background:
+          #eff7fa;
+
+        font-size:
+          7px;
+
+        font-weight:
+          700;
+      }
+
+
+      .ahx-chip b {
+        margin-left:
+          3px;
+
+        color:
+          var(--ahx-primary);
+      }
+
+
+      .ahx-record-list {
+        display:
+          grid;
+
+        gap:
+          8px;
+
+        padding:
+          0 8px 8px;
+      }
+
+
+      .ahx-record {
+        overflow:
+          hidden;
+
+        border:
+          1px solid
+          var(--ahx-border);
+
+        border-left:
+          4px solid
+          var(--ahx-success);
+
+        border-radius:
+          11px;
+
+        background:
+          #ffffff;
+
+        box-shadow:
+          0 3px 12px
+          rgba(
+            16,
+            56,
+            80,
+            .07
+          );
+      }
+
+
+      .ahx-record.deny {
+        border-color:
+          #efb3b3;
+
+        border-left-color:
+          var(--ahx-danger);
+      }
+
+
+      .ahx-record-head {
+        display:
+          flex;
+
+        align-items:
+          center;
+
+        justify-content:
+          space-between;
+
+        gap:
+          7px;
+
+        padding:
+          8px;
+
+        border-bottom:
+          1px solid
+          #e2e9ec;
+
+        background:
+          #f8fafb;
+      }
+
+
+      .ahx-record.deny
+      .ahx-record-head {
+        background:
+          #fff2f2;
+      }
+
+
+      .ahx-record-person {
+        display:
+          flex;
+
+        align-items:
+          center;
+
+        gap:
+          7px;
+
+        min-width:
+          0;
+      }
+
+
+      .ahx-record-time {
+        flex:
+          0 0 auto;
+
+        color:
+          #607783;
+
+        font-size:
+          8px;
+
+        font-weight:
+          800;
+      }
+
+
+      .ahx-record-name {
+        overflow:
+          hidden;
+
+        color:
+          #1f3945;
+
+        font-size:
+          11px;
+
+        font-weight:
+          900;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+
+      .ahx-status-badge {
+        flex:
+          0 0 auto;
+
+        max-width:
+          44%;
+
+        padding:
+          4px 7px;
+
+        overflow:
+          hidden;
+
+        border-radius:
+          999px;
+
+        font-size:
+          7px;
+
+        font-weight:
+          900;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+
+      .ahx-status-badge.allow {
+        color:
+          #087347;
+
+        background:
+          #ddf5e8;
+      }
+
+
+      .ahx-status-badge.deny {
+        color:
+          #ffffff;
+
+        background:
+          var(--ahx-danger);
+      }
+
+
+      .ahx-record-meta {
+        display:
+          grid;
+
+        grid-template-columns:
+          repeat(
+            4,
+            minmax(0, 1fr)
+          );
+
+        gap:
+          5px;
+
+        padding:
+          7px 8px 2px;
+      }
+
+
+      .ahx-meta-item {
+        min-width:
+          0;
+
+        padding:
+          5px 6px;
+
+        border-radius:
+          7px;
+
+        background:
+          #f4f8fa;
+      }
+
+
+      .ahx-meta-item small {
+        display:
+          block;
+
+        color:
+          #71838c;
+
+        font-size:
+          6px;
+      }
+
+
+      .ahx-meta-item strong {
+        display:
+          block;
+
+        margin-top:
+          1px;
+
+        overflow:
+          hidden;
+
+        color:
+          #2d4a57;
+
+        font-size:
+          8px;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+
+      .ahx-value-grid {
+        display:
+          grid;
+
+        grid-template-columns:
+          repeat(
+            4,
+            minmax(0, 1fr)
+          );
+
+        gap:
+          4px;
+
+        padding:
+          5px 8px 7px;
+      }
+
+
+      .ahx-value-card {
+        min-width:
+          0;
+
+        padding:
+          5px 3px;
+
+        border:
+          1px solid
+          #dce5e9;
+
+        border-radius:
+          7px;
+
+        color:
+          #6b7e87;
+
+        background:
+          #fafcfd;
+
+        font-size:
+          6px;
+
+        text-align:
+          center;
+      }
+
+
+      .ahx-value-card b {
+        display:
+          block;
+
+        margin-top:
+          2px;
+
+        overflow:
+          hidden;
+
+        color:
+          var(--ahx-primary);
+
+        font-size:
+          10px;
+
+        font-weight:
+          900;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+
+      .ahx-image-status {
+        display:
+          flex;
+
+        align-items:
+          center;
+
+        justify-content:
+          space-between;
+
+        gap:
+          7px;
+
+        margin:
+          0 8px 7px;
+
+        padding:
+          6px 7px;
+
+        border:
+          1px solid
+          #d8e2e7;
+
+        border-radius:
+          8px;
+
+        color:
+          #506975;
+
+        background:
+          #f7fafb;
+
+        font-size:
+          7px;
+      }
+
+
+      .ahx-image-status strong {
+        font-size:
+          7px;
+      }
+
+
+      .ahx-image-status small {
+        color:
+          #7c8c94;
+
+        font-size:
+          6px;
+
+        text-align:
+          right;
+      }
+
+
+      .ahx-round-list {
+        display:
+          grid;
+
+        gap:
+          5px;
+
+        padding:
+          0 8px 8px;
+      }
+
+
+      .ahx-round {
+        display:
+          grid;
+
+        grid-template-columns:
+          minmax(110px, .85fr)
+          minmax(120px, 1.15fr)
+          auto;
+
+        align-items:
+          center;
+
+        gap:
+          6px;
+
+        min-width:
+          0;
+
+        padding:
+          6px;
+
+        border:
+          1px solid
+          #dce5e9;
+
+        border-radius:
+          8px;
+      }
+
+
+      .ahx-round-main,
+      .ahx-round-photo {
+        min-width:
+          0;
+      }
+
+
+      .ahx-round-main strong,
+      .ahx-round-photo strong {
+        display:
+          block;
+
+        overflow:
+          hidden;
+
+        color:
+          #3b5662;
+
+        font-size:
+          7px;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+
+      .ahx-round-main b {
+        display:
+          block;
+
+        margin-top:
+          1px;
+
+        color:
+          var(--ahx-primary);
+
+        font-size:
+          10px;
+      }
+
+
+      .ahx-round-main small,
+      .ahx-round-photo small {
+        display:
+          block;
+
+        overflow:
+          hidden;
+
+        margin-top:
+          1px;
+
+        color:
+          #7b8c94;
+
+        font-size:
+          6px;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+
+      .ahx-view-image {
+        min-height:
+          30px;
+
+        padding:
+          4px 8px;
+
+        border:
+          0;
+
+        border-radius:
+          7px;
+
+        color:
+          #ffffff;
+
+        background:
+          var(--ahx-primary-2);
+
+        font:
+          inherit;
+
+        font-size:
+          7px;
+
+        font-weight:
+          900;
+
+        white-space:
+          nowrap;
+      }
+
+
+      .ahx-no-image {
+        color:
+          #8b999f;
+
+        font-size:
+          6px;
+
+        font-weight:
+          700;
+
+        text-align:
+          center;
+      }
+
+
+      .ahx-record-id {
+        padding:
+          4px 8px;
+
+        overflow:
+          hidden;
+
+        border-top:
+          1px dashed
+          #dce5e9;
+
+        color:
+          #8d999f;
+
+        background:
+          #fafcfd;
+
+        font-family:
+          ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+
+        font-size:
+          6px;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+
+      .ahx-pagination {
+        display:
+          grid;
+
+        grid-template-columns:
+          92px
+          minmax(0, 1fr)
+          92px;
+
+        align-items:
+          center;
+
+        gap:
+          6px;
+
+        padding:
+          0 8px 12px;
+      }
+
+
+      .ahx-pagination button {
+        min-height:
+          35px;
+
+        border:
+          1px solid
+          #c9d8df;
+
+        border-radius:
+          8px;
+
+        color:
+          var(--ahx-primary);
+
+        background:
+          #ffffff;
+
+        font:
+          inherit;
+
+        font-size:
+          8px;
+
+        font-weight:
+          850;
+      }
+
+
+      .ahx-pagination button:disabled {
+        opacity:
+          .42;
+      }
+
+
+      .ahx-pagination span {
+        color:
+          #405b67;
+
+        font-size:
+          8px;
+
+        font-weight:
+          850;
+
+        text-align:
+          center;
+      }
+
+
+      .ahx-pagination small {
+        display:
+          block;
+
+        margin-top:
+          2px;
+
+        color:
+          var(--ahx-muted);
+
+        font-size:
+          6px;
+      }
+
+
+      .ahx-image-overlay {
+        position:
+          fixed;
+
+        inset:
+          0;
+
+        z-index:
+          999999;
+
+        display:
+          grid;
+
+        place-items:
+          center;
+
+        padding:
+          10px;
+
+        background:
+          rgba(
+            2,
+            12,
+            18,
+            .92
+          );
+      }
+
+
+      .ahx-image-dialog {
+        display:
+          grid;
+
+        grid-template-rows:
+          auto
+          minmax(0, 1fr);
+
+        width:
+          min(
+            96vw,
+            820px
+          );
+
+        max-height:
+          94dvh;
+
+        overflow:
+          hidden;
+
+        border:
+          1px solid
+          rgba(
+            255,
+            255,
+            255,
+            .18
+          );
+
+        border-radius:
+          14px;
+
+        background:
+          #07131a;
+
+        box-shadow:
+          0 24px 80px
+          rgba(
+            0,
+            0,
+            0,
+            .52
+          );
+      }
+
+
+      .ahx-image-head {
+        display:
+          flex;
+
+        align-items:
+          center;
+
+        justify-content:
+          space-between;
+
+        gap:
+          8px;
+
+        min-height:
+          46px;
+
+        padding:
+          8px 10px;
+
+        color:
+          #ffffff;
+
+        background:
+          #0d354c;
+      }
+
+
+      .ahx-image-head strong {
+        font-size:
+          11px;
+      }
+
+
+      .ahx-image-head button {
+        display:
+          grid;
+
+        place-items:
+          center;
+
+        width:
+          31px;
+
+        height:
+          31px;
+
+        padding:
+          0;
+
+        border:
+          1px solid
+          rgba(
+            255,
+            255,
+            255,
+            .24
+          );
+
+        border-radius:
+          50%;
+
+        color:
+          #ffffff;
+
+        background:
+          rgba(
+            255,
+            255,
+            255,
+            .10
+          );
+
+        font:
+          inherit;
+
+        font-size:
+          20px;
+      }
+
+
+      .ahx-image-body {
+        display:
+          flex;
+
+        flex-direction:
+          column;
+
+        align-items:
+          center;
+
+        justify-content:
+          center;
+
+        min-height:
+          230px;
+
+        overflow:
+          auto;
+
+        padding:
+          9px;
+
+        color:
+          #d9e7ed;
+      }
+
+
+      .ahx-image-body img {
+        display:
+          block;
+
+        max-width:
+          100%;
+
+        max-height:
+          calc(
+            94dvh -
+            90px
+          );
+
+        border-radius:
+          9px;
+
+        object-fit:
+          contain;
+      }
+
+
+      .ahx-image-caption {
+        margin-top:
+          7px;
+
+        color:
+          rgba(
+            255,
+            255,
+            255,
+            .65
+          );
+
+        font-size:
+          7px;
+
+        text-align:
+          center;
+      }
+
+
+      @media (
+        max-width: 700px
+      ) {
+
+        .ahx-main-popup {
+          width:
+            100vw !important;
+
+          height:
+            100dvh !important;
+
+          max-height:
+            100dvh !important;
+
+          border:
+            0 !important;
+
+          border-radius:
+            0 !important;
+        }
+
+
+        .ahx-main-html {
+          height:
+            100dvh !important;
+
+          max-height:
+            100dvh !important;
+        }
+
+
+        .ahx-topbar {
+          padding-top:
+            calc(
+              9px +
+              env(
+                safe-area-inset-top,
+                0px
+              )
+            );
+        }
+
+
+        .ahx-summary-grid {
+          grid-template-columns:
+            repeat(
+              4,
+              minmax(0, 1fr)
+            );
+
+          gap:
+            5px;
+
+          padding:
+            7px;
+        }
+
+
+        .ahx-summary-card {
+          min-height:
+            52px;
+        }
+
+
+        .ahx-calendar-wrap {
+          margin-right:
+            6px;
+
+          margin-left:
+            6px;
+        }
+
+
+        .ahx-calendar-grid {
+          gap:
+            3px;
+
+          padding:
+            4px;
+        }
+
+
+        .ahx-calendar-day,
+        .ahx-calendar-empty {
+          min-height:
+            52px;
+        }
+
+
+        .ahx-calendar-day {
+          padding:
+            5px 4px;
+
+          border-radius:
+            7px;
+        }
+
+
+        .ahx-day-number {
+          font-size:
+            11px;
+        }
+
+
+        .ahx-day-badge {
+          top:
+            4px;
+
+          right:
+            4px;
+
+          padding:
+            1px 4px;
+
+          font-size:
+            6px;
+        }
+
+
+        .ahx-day-footer small {
+          display:
+            none;
+        }
+
+
+        .ahx-record-meta {
+          grid-template-columns:
+            repeat(
+              2,
+              minmax(0, 1fr)
+            );
+        }
+
+
+        .ahx-round {
+          grid-template-columns:
+            minmax(85px, .85fr)
+            minmax(100px, 1.15fr)
+            auto;
+        }
+
+
+        .ahx-image-dialog {
+          width:
+            100vw;
+
+          height:
+            100dvh;
+
+          max-height:
+            100dvh;
+
+          border:
+            0;
+
+          border-radius:
+            0;
+        }
+
+      }
+
+
+      @media (
+        max-width: 390px
+      ) {
+
+        .ahx-login-card {
+          padding-right:
+            17px;
+
+          padding-left:
+            17px;
+        }
+
+
+        .ahx-login-actions {
+          padding-right:
+            17px !important;
+
+          padding-left:
+            17px !important;
+        }
+
+
+        .ahx-confirm-button,
+        .ahx-cancel-button {
+          min-width:
+            100px !important;
+        }
+
+
+        .ahx-topbar {
+          padding-right:
+            8px;
+
+          padding-left:
+            8px;
+        }
+
+
+        .ahx-topbar-logo {
+          flex-basis:
+            32px;
+
+          width:
+            32px;
+
+          height:
+            32px;
+        }
+
+
+        .ahx-topbar h2 {
+          font-size:
+            12px;
+        }
+
+
+        .ahx-text-button {
+          padding-right:
+            6px;
+
+          padding-left:
+            6px;
+
+          font-size:
+            7px;
+        }
+
+
+        .ahx-summary-grid {
+          grid-template-columns:
+            repeat(
+              3,
+              minmax(0, 1fr)
+            );
+        }
+
+
+        .ahx-summary-card strong {
+          font-size:
+            12px;
+        }
+
+
+        .ahx-calendar-day,
+        .ahx-calendar-empty {
+          min-height:
+            48px;
+        }
+
+
+        .ahx-breakdown-row {
+          grid-template-columns:
+            66px
+            minmax(0, 1fr);
+        }
+
+
+        .ahx-value-grid {
+          gap:
+            3px;
+
+          padding-right:
+            6px;
+
+          padding-left:
+            6px;
+        }
+
+
+        .ahx-round-list {
+          padding-right:
+            6px;
+
+          padding-left:
+            6px;
+        }
+
+
+        .ahx-round {
+          grid-template-columns:
+            minmax(70px, .8fr)
+            minmax(78px, 1.2fr)
+            auto;
+
+          gap:
+            4px;
+
+          padding:
+            5px;
+        }
+
+
+        .ahx-pagination {
+          grid-template-columns:
+            76px
+            minmax(0, 1fr)
+            76px;
+        }
+
+      }
+    `;
+
+    document.head
+      .appendChild(style);
+  }
+
+
+  /************************************************************
+   * Camera Pause / Resume
+   ************************************************************/
+
+  function pauseCamera() {
+    state.cameraWasReady =
+      false;
+
+    try {
+      const camera =
+        window.AlcoholCamera;
+
+      if (
+        camera &&
+        typeof camera.getState ===
+        'function'
+      ) {
+        const cameraState =
+          camera.getState();
+
+        state.cameraWasReady =
+          Boolean(
+            cameraState &&
+            cameraState.ready
+          );
+      }
+
+      if (
+        state.cameraWasReady &&
+        camera &&
+        typeof camera.close ===
+        'function'
+      ) {
+        camera.close();
+      }
+
+    } catch (error) {
+      console.warn(
+        'หยุดกล้องชั่วคราวไม่สำเร็จ',
+        error
+      );
+    }
+  }
+
+
+  function resumeCamera() {
+    if (!state.cameraWasReady) {
+      return;
+    }
+
+    state.cameraWasReady =
+      false;
+
+    window.setTimeout(
+      function () {
+        try {
+          const camera =
+            window.AlcoholCamera;
+
+          if (
+            camera &&
+            typeof camera.open ===
+            'function'
+          ) {
+            camera.open();
+          }
+
+        } catch (error) {
+          console.warn(
+            'เปิดกล้องกลับไม่สำเร็จ',
+            error
+          );
+        }
+      },
+      180
+    );
+  }
+
+
+  /************************************************************
    * History Button
    ************************************************************/
 
   function ensureHistoryButton() {
     let button =
-      document.getElementById(
+      getElement(
         'historyAccessButton'
       );
 
-    if (button) {
-      return button;
-    }
+    if (!button) {
+      button =
+        document.createElement(
+          'button'
+        );
 
-    button =
-      document.createElement(
-        'button'
+      button.id =
+        'historyAccessButton';
+
+      button.type =
+        'button';
+
+      button.innerHTML =
+        '<span aria-hidden="true">🔒</span>' +
+        '<span>ประวัติ</span>';
+
+      const target =
+        document.querySelector(
+          '.topbar-status-row'
+        ) ||
+        document.querySelector(
+          '.topbar-info'
+        ) ||
+        document.querySelector(
+          '.status-section'
+        ) ||
+        document.body;
+
+      target.appendChild(
+        button
       );
-
-    button.id =
-      'historyAccessButton';
+    }
 
     button.type =
       'button';
 
     button.className =
-      'history-access-button';
+      'ahx-history-button';
 
     button.setAttribute(
       'aria-label',
       'เข้าสู่ระบบเพื่อดูประวัติการตรวจวัด'
     );
 
-    button.innerHTML =
-      '<span aria-hidden="true">🔒</span>' +
-      '<span>ประวัติ</span>';
-
-    const target =
-      document.querySelector(
-        '.topbar-info'
-      ) ||
-      document.querySelector(
-        '.status-section'
-      ) ||
-      document.body;
-
-    target.appendChild(
-      button
-    );
+    button.title =
+      'ดูประวัติการตรวจวัด';
 
     return button;
   }
@@ -632,75 +3527,20 @@
 
   function setButtonBusy(busy) {
     const button =
-      document.getElementById(
+      getElement(
         'historyAccessButton'
       );
 
-    if (!button) {
-      return;
+    if (button) {
+      button.disabled =
+        Boolean(busy);
     }
-
-    button.disabled =
-      Boolean(busy);
-
-    button.classList.toggle(
-      'is-loading',
-      Boolean(busy)
-    );
   }
 
 
   /************************************************************
-   * Open History
+   * Authentication
    ************************************************************/
-
-  async function openHistory() {
-    if (state.opening) {
-      return;
-    }
-
-    if (!API) {
-      window.alert(
-        'ไม่พบ AlcoholAPI กรุณาตรวจสอบลำดับการโหลดไฟล์'
-      );
-
-      return;
-    }
-
-    if (!hasSweetAlert()) {
-      window.alert(
-        'ไม่พบ SweetAlert2 กรุณาเพิ่ม SweetAlert2 ใน index.html'
-      );
-
-      return;
-    }
-
-    state.opening =
-      true;
-
-    setButtonBusy(true);
-
-    try {
-      const authenticated =
-        await ensureAuthenticated();
-
-      if (authenticated) {
-        await showCalendar();
-      }
-
-    } catch (error) {
-      await showGeneralError(
-        error
-      );
-
-    } finally {
-      state.opening =
-        false;
-
-      setButtonBusy(false);
-    }
-  }
-
 
   async function ensureAuthenticated() {
     loadSession();
@@ -746,10 +3586,6 @@
   }
 
 
-  /************************************************************
-   * Login
-   ************************************************************/
-
   async function showLogin() {
     const Swal =
       getSwal();
@@ -757,41 +3593,85 @@
     const result =
       await Swal.fire({
         title:
-          'เข้าสู่ระบบดูประวัติ',
-
-        html:
-          '<div class="history-login-form">' +
-
-            '<label for="historyLoginName">' +
-              'ชื่อผู้ใช้งาน' +
-            '</label>' +
-
-            '<input ' +
-              'id="historyLoginName" ' +
-              'class="swal2-input history-login-input" ' +
-              'type="text" ' +
-              'maxlength="200" ' +
-              'autocomplete="username" ' +
-              'placeholder="กรอกชื่อในชีท Pass"' +
-            '>' +
-
-            '<label for="historyLoginPass">' +
-              'รหัสผ่าน' +
-            '</label>' +
-
-            '<input ' +
-              'id="historyLoginPass" ' +
-              'class="swal2-input history-login-input" ' +
-              'type="password" ' +
-              'maxlength="200" ' +
-              'autocomplete="current-password" ' +
-              'placeholder="กรอกรหัสผ่าน"' +
-            '>' +
-
-          '</div>',
+          '',
 
         icon:
-          'info',
+          undefined,
+
+        width:
+          430,
+
+        html:
+          '<div class="ahx-login-card">' +
+
+            '<div class="ahx-login-brand">' +
+
+              '<div ' +
+                'class="ahx-login-icon" ' +
+                'aria-hidden="true"' +
+              '>' +
+                '🔐' +
+              '</div>' +
+
+              '<div>' +
+                '<h2>' +
+                  'เข้าสู่ระบบดูประวัติ' +
+                '</h2>' +
+
+                '<p>' +
+                  'ใช้ชื่อและรหัสจากชีท Pass' +
+                '</p>' +
+              '</div>' +
+
+            '</div>' +
+
+
+            '<div class="ahx-field">' +
+
+              '<label for="ahxLoginName">' +
+                'ชื่อผู้ใช้งาน' +
+              '</label>' +
+
+              '<input ' +
+                'id="ahxLoginName" ' +
+                'type="text" ' +
+                'maxlength="200" ' +
+                'autocomplete="username" ' +
+                'placeholder="กรอกชื่อผู้ใช้งาน"' +
+              '>' +
+
+            '</div>' +
+
+
+            '<div class="ahx-field">' +
+
+              '<label for="ahxLoginPass">' +
+                'รหัสผ่าน' +
+              '</label>' +
+
+              '<input ' +
+                'id="ahxLoginPass" ' +
+                'type="password" ' +
+                'maxlength="200" ' +
+                'autocomplete="current-password" ' +
+                'placeholder="กรอกรหัสผ่าน"' +
+              '>' +
+
+            '</div>' +
+
+
+            '<div class="ahx-login-note">' +
+              '<span aria-hidden="true">' +
+                'ℹ️' +
+              '</span>' +
+
+              '<span>' +
+                'ระบบจะเก็บ Session เฉพาะแท็บนี้ ' +
+                'และออกจากระบบอัตโนมัติเมื่อ Session หมดอายุ' +
+              '</span>' +
+            '</div>' +
+
+          '</div>',
 
         showCancelButton:
           true,
@@ -816,16 +3696,39 @@
             return !Swal.isLoading();
           },
 
+        buttonsStyling:
+          false,
+
+        customClass: {
+          popup:
+            'ahx-login-popup',
+
+          htmlContainer:
+            'ahx-login-html',
+
+          actions:
+            'ahx-login-actions',
+
+          confirmButton:
+            'ahx-confirm-button',
+
+          cancelButton:
+            'ahx-cancel-button',
+
+          validationMessage:
+            'ahx-validation-message'
+        },
+
         didOpen:
           function () {
             const nameInput =
-              document.getElementById(
-                'historyLoginName'
+              getElement(
+                'ahxLoginName'
               );
 
             const passInput =
-              document.getElementById(
-                'historyLoginPass'
+              getElement(
+                'ahxLoginPass'
               );
 
             if (nameInput) {
@@ -850,12 +3753,12 @@
                     ) {
                       event.preventDefault();
 
-                      const confirm =
+                      const confirmButton =
                         Swal
                           .getConfirmButton();
 
-                      if (confirm) {
-                        confirm.click();
+                      if (confirmButton) {
+                        confirmButton.click();
                       }
                     }
                   }
@@ -866,22 +3769,26 @@
 
         preConfirm:
           async function () {
+            const nameInput =
+              getElement(
+                'ahxLoginName'
+              );
+
+            const passInput =
+              getElement(
+                'ahxLoginPass'
+              );
+
             const name =
               cleanText(
-                document
-                  .getElementById(
-                    'historyLoginName'
-                  )
-                  .value
+                nameInput &&
+                nameInput.value
               );
 
             const pas =
               cleanText(
-                document
-                  .getElementById(
-                    'historyLoginPass'
-                  )
-                  .value
+                passInput &&
+                passInput.value
               );
 
             if (!name || !pas) {
@@ -907,12 +3814,11 @@
 
             } catch (error) {
               Swal.showValidationMessage(
-                escapeHtml(
+                cleanText(
                   error &&
                   error.message
-                    ? error.message
-                    : 'เข้าสู่ระบบไม่สำเร็จ'
-                )
+                ) ||
+                'เข้าสู่ระบบไม่สำเร็จ'
               );
 
               return false;
@@ -931,33 +3837,15 @@
       result.value
     );
 
-    await Swal.fire({
-      icon:
-        'success',
-
-      title:
-        'เข้าสู่ระบบสำเร็จ',
-
-      text:
-        'ผู้ใช้งาน: ' +
-        state.name,
-
-      timer:
-        900,
-
-      showConfirmButton:
-        false
-    });
-
     return true;
   }
 
 
   /************************************************************
-   * Calendar
+   * Main Modal
    ************************************************************/
 
-  async function showCalendar() {
+  async function showMainModal() {
     const Swal =
       getSwal();
 
@@ -971,104 +3859,220 @@
         '',
 
       html:
-        calendarShellHtml(),
-
-      width:
-        760,
+        '<div ' +
+          'id="ahxRoot" ' +
+          'class="ahx-app"' +
+        '></div>',
 
       showConfirmButton:
         false,
 
+      showCancelButton:
+        false,
+
       showCloseButton:
-        true,
+        false,
 
       allowOutsideClick:
         false,
 
+      allowEscapeKey:
+        true,
+
       customClass: {
         popup:
-          'history-swal-popup',
+          'ahx-main-popup',
 
         htmlContainer:
-          'history-swal-html'
+          'ahx-main-html'
       },
 
       didOpen:
         function () {
-          bindCalendarEvents();
+          renderCalendarView();
+        },
 
-          loadMonth(
-            state.currentMonth
-          );
+      willClose:
+        function () {
+          releaseImageData();
         }
     });
   }
 
 
-  function calendarShellHtml() {
+  function mainHeaderHtml(
+    title,
+    subtitle,
+    showBack
+  ) {
     return (
-      '<div class="history-calendar-shell">' +
+      '<header class="ahx-topbar">' +
 
-        '<div class="history-calendar-top">' +
+        '<div class="ahx-topbar-left">' +
 
-          '<div>' +
-            '<strong>' +
-              'ประวัติการตรวจวัด' +
-            '</strong>' +
+          (
+            showBack
+              ? (
+                '<button ' +
+                  'id="ahxBackButton" ' +
+                  'type="button" ' +
+                  'class="ahx-back-button"' +
+                '>' +
+                  '‹ ปฏิทิน' +
+                '</button>'
+              )
+              : (
+                '<div ' +
+                  'class="ahx-topbar-logo" ' +
+                  'aria-hidden="true"' +
+                '>' +
+                  '📊' +
+                '</div>'
+              )
+          ) +
 
-            '<small id="historyViewerName">' +
-              escapeHtml(
-                state.name
-              ) +
-            '</small>' +
+          '<div class="ahx-topbar-title">' +
+
+            '<div>' +
+              '<h2>' +
+                escapeHtml(title) +
+              '</h2>' +
+
+              '<p>' +
+                escapeHtml(subtitle) +
+              '</p>' +
+            '</div>' +
+
           '</div>' +
 
+        '</div>' +
+
+
+        '<div class="ahx-topbar-actions">' +
+
           '<button ' +
-            'id="historyLogoutButton" ' +
+            'id="ahxLogoutButton" ' +
             'type="button" ' +
-            'class="history-small-action danger"' +
+            'class="ahx-text-button danger"' +
           '>' +
             'ออกจากระบบ' +
           '</button>' +
 
-        '</div>' +
-
-        '<div class="history-month-nav">' +
-
           '<button ' +
-            'id="historyPreviousMonth" ' +
+            'id="ahxCloseButton" ' +
             'type="button" ' +
-            'aria-label="เดือนก่อนหน้า"' +
+            'class="ahx-icon-button" ' +
+            'aria-label="ปิด"' +
           '>' +
-            '‹' +
-          '</button>' +
-
-          '<div>' +
-            '<strong id="historyMonthTitle">' +
-              '--' +
-            '</strong>' +
-
-            '<small id="historyMonthGenerated">' +
-              'กำลังโหลด...' +
-            '</small>' +
-          '</div>' +
-
-          '<button ' +
-            'id="historyNextMonth" ' +
-            'type="button" ' +
-            'aria-label="เดือนถัดไป"' +
-          '>' +
-            '›' +
+            '×' +
           '</button>' +
 
         '</div>' +
 
-        '<div ' +
-          'id="historyMonthSummary" ' +
-          'class="history-month-summary"' +
-        '></div>' +
+      '</header>'
+    );
+  }
 
-        '<div class="history-weekdays">' +
+
+  function bindCommonHeaderEvents() {
+    const closeButton =
+      getElement(
+        'ahxCloseButton'
+      );
+
+    const logoutButton =
+      getElement(
+        'ahxLogoutButton'
+      );
+
+    if (closeButton) {
+      closeButton.addEventListener(
+        'click',
+        function () {
+          getSwal().close();
+        }
+      );
+    }
+
+    if (logoutButton) {
+      logoutButton.addEventListener(
+        'click',
+        logoutHistory
+      );
+    }
+  }
+
+
+  /************************************************************
+   * Calendar
+   ************************************************************/
+
+  function renderCalendarView() {
+    const root =
+      getElement(
+        'ahxRoot'
+      );
+
+    if (!root) {
+      return;
+    }
+
+    root.innerHTML =
+      mainHeaderHtml(
+        'ประวัติการตรวจวัดแอลกอฮอล์',
+        'ผู้ใช้งาน: ' +
+        (
+          state.name ||
+          '-'
+        ),
+        false
+      ) +
+
+
+      '<section class="ahx-month-panel">' +
+
+        '<button ' +
+          'id="ahxPreviousMonth" ' +
+          'type="button" ' +
+          'aria-label="เดือนก่อนหน้า"' +
+        '>' +
+          '‹' +
+        '</button>' +
+
+        '<div class="ahx-month-title">' +
+          '<strong id="ahxMonthTitle">' +
+            escapeHtml(
+              monthTitle(
+                state.currentMonth
+              )
+            ) +
+          '</strong>' +
+
+          '<small id="ahxMonthGenerated">' +
+            'กำลังโหลดข้อมูล...' +
+          '</small>' +
+        '</div>' +
+
+        '<button ' +
+          'id="ahxNextMonth" ' +
+          'type="button" ' +
+          'aria-label="เดือนถัดไป"' +
+        '>' +
+          '›' +
+        '</button>' +
+
+      '</section>' +
+
+
+      '<section ' +
+        'id="ahxMonthSummary" ' +
+        'class="ahx-summary-grid"' +
+      '></section>' +
+
+
+      '<section class="ahx-calendar-wrap">' +
+
+        '<div class="ahx-weekdays">' +
           '<span>จ</span>' +
           '<span>อ</span>' +
           '<span>พ</span>' +
@@ -1079,59 +4083,55 @@
         '</div>' +
 
         '<div ' +
-          'id="historyCalendarGrid" ' +
-          'class="history-calendar-grid"' +
+          'id="ahxCalendarGrid" ' +
+          'class="ahx-calendar-grid"' +
         '>' +
           loadingHtml(
             'กำลังโหลดข้อมูลรายเดือน...'
           ) +
         '</div>' +
 
-        '<div class="history-calendar-legend">' +
-          '<span>' +
-            '<i class="has-record"></i>' +
-            'มีข้อมูล' +
-          '</span>' +
-
-          '<span>' +
-            '<i class="has-deny"></i>' +
-            'มีผลห้ามเข้า' +
-          '</span>' +
-
-          '<span>' +
-            '<i class="images-deleted"></i>' +
-            'ภาพถูกลบทั้งหมด' +
-          '</span>' +
-
-          '<span>' +
-            '<i class="image-issue"></i>' +
-            'ภาพมีปัญหา' +
-          '</span>' +
-        '</div>' +
-
-      '</div>'
-    );
-  }
+      '</section>' +
 
 
-  function bindCalendarEvents() {
-    const previous =
-      document.getElementById(
-        'historyPreviousMonth'
+      '<div class="ahx-legend">' +
+
+        '<span>' +
+          '<i class="ahx-dot-data"></i>' +
+          'มีข้อมูล' +
+        '</span>' +
+
+        '<span>' +
+          '<i class="ahx-dot-deny"></i>' +
+          'มีผลห้ามเข้า' +
+        '</span>' +
+
+        '<span>' +
+          '<i class="ahx-dot-deleted"></i>' +
+          'ภาพถูกลบทั้งหมด' +
+        '</span>' +
+
+        '<span>' +
+          '<i class="ahx-dot-issue"></i>' +
+          'ภาพมีปัญหา' +
+        '</span>' +
+
+      '</div>';
+
+    bindCommonHeaderEvents();
+
+    const previousButton =
+      getElement(
+        'ahxPreviousMonth'
       );
 
-    const next =
-      document.getElementById(
-        'historyNextMonth'
+    const nextButton =
+      getElement(
+        'ahxNextMonth'
       );
 
-    const logout =
-      document.getElementById(
-        'historyLogoutButton'
-      );
-
-    if (previous) {
-      previous.addEventListener(
+    if (previousButton) {
+      previousButton.addEventListener(
         'click',
         function () {
           loadMonth(
@@ -1144,8 +4144,8 @@
       );
     }
 
-    if (next) {
-      next.addEventListener(
+    if (nextButton) {
+      nextButton.addEventListener(
         'click',
         function () {
           loadMonth(
@@ -1158,29 +4158,39 @@
       );
     }
 
-    if (logout) {
-      logout.addEventListener(
-        'click',
-        logoutHistory
+    if (
+      state.monthData &&
+      state.monthData.month ===
+      state.currentMonth
+    ) {
+      renderMonthData(
+        state.monthData
+      );
+
+    } else {
+      loadMonth(
+        state.currentMonth
       );
     }
   }
 
 
-  async function loadMonth(monthKey) {
+  async function loadMonth(
+    monthKey
+  ) {
     const grid =
-      document.getElementById(
-        'historyCalendarGrid'
+      getElement(
+        'ahxCalendarGrid'
       );
 
     const title =
-      document.getElementById(
-        'historyMonthTitle'
+      getElement(
+        'ahxMonthTitle'
       );
 
     const generated =
-      document.getElementById(
-        'historyMonthGenerated'
+      getElement(
+        'ahxMonthGenerated'
       );
 
     if (!grid) {
@@ -1196,12 +4206,14 @@
 
     if (title) {
       title.textContent =
-        monthTitle(monthKey);
+        monthTitle(
+          monthKey
+        );
     }
 
     if (generated) {
       generated.textContent =
-        'กำลังโหลด...';
+        'กำลังโหลดข้อมูล...';
     }
 
     grid.innerHTML =
@@ -1209,7 +4221,7 @@
         'กำลังโหลดข้อมูลรายเดือน...'
       );
 
-    setMonthNavigationDisabled(
+    setMonthButtonsDisabled(
       true
     );
 
@@ -1227,13 +4239,16 @@
               monthKey
           });
 
-      renderMonth(
+      state.monthData =
+        result;
+
+      renderMonthData(
         result
       );
 
     } catch (error) {
       if (
-        await handleExpiredSession(
+        handleAuthFailure(
           error
         )
       ) {
@@ -1242,10 +4257,11 @@
 
       grid.innerHTML =
         errorHtml(
-          error &&
-          error.message
-            ? error.message
-            : 'โหลดข้อมูลรายเดือนไม่สำเร็จ'
+          cleanText(
+            error &&
+            error.message
+          ) ||
+          'โหลดข้อมูลรายเดือนไม่สำเร็จ'
         );
 
       if (generated) {
@@ -1254,26 +4270,26 @@
       }
 
     } finally {
-      setMonthNavigationDisabled(
+      setMonthButtonsDisabled(
         false
       );
     }
   }
 
 
-  function setMonthNavigationDisabled(
+  function setMonthButtonsDisabled(
     disabled
   ) {
     [
-      'historyPreviousMonth',
-      'historyNextMonth'
+      'ahxPreviousMonth',
+      'ahxNextMonth'
     ].forEach(
       function (id) {
-        const element =
-          document.getElementById(id);
+        const button =
+          getElement(id);
 
-        if (element) {
-          element.disabled =
+        if (button) {
+          button.disabled =
             Boolean(disabled);
         }
       }
@@ -1281,23 +4297,23 @@
   }
 
 
-  function renderMonth(data) {
-    const grid =
-      document.getElementById(
-        'historyCalendarGrid'
+  function renderMonthData(data) {
+    const summary =
+      getElement(
+        'ahxMonthSummary'
       );
 
-    const summary =
-      document.getElementById(
-        'historyMonthSummary'
+    const grid =
+      getElement(
+        'ahxCalendarGrid'
       );
 
     const generated =
-      document.getElementById(
-        'historyMonthGenerated'
+      getElement(
+        'ahxMonthGenerated'
       );
 
-    if (!grid) {
+    if (!summary || !grid) {
       return;
     }
 
@@ -1311,12 +4327,10 @@
           : '';
     }
 
-    if (summary) {
-      summary.innerHTML =
-        monthSummaryHtml(
-          data.totals || {}
-        );
-    }
+    summary.innerHTML =
+      monthSummaryHtml(
+        data.totals || {}
+      );
 
     grid.innerHTML =
       calendarGridHtml(
@@ -1326,7 +4340,7 @@
 
     grid
       .querySelectorAll(
-        '[data-history-date]'
+        '[data-ahx-date]'
       )
       .forEach(
         function (button) {
@@ -1336,23 +4350,21 @@
               const selectedDate =
                 cleanText(
                   button.dataset
-                    .historyDate
+                    .ahxDate
                 );
 
               if (!selectedDate) {
                 return;
               }
 
-              getSwal().close();
+              state.currentDate =
+                selectedDate;
 
-              window.setTimeout(
-                function () {
-                  showDay(
-                    selectedDate,
-                    1
-                  );
-                },
-                0
+              state.currentPage =
+                1;
+
+              renderDayView(
+                selectedDate
               );
             }
           );
@@ -1361,13 +4373,13 @@
   }
 
 
-  function summaryItemHtml(
+  function summaryCardHtml(
     label,
     value,
     type
   ) {
     return (
-      '<div class="history-summary-item ' +
+      '<div class="ahx-summary-card ' +
         escapeAttribute(
           type || ''
         ) +
@@ -1388,34 +4400,34 @@
 
   function monthSummaryHtml(totals) {
     return (
-      summaryItemHtml(
+      summaryCardHtml(
         'วันที่มีข้อมูล',
         totals.daysWithData || 0
       ) +
 
-      summaryItemHtml(
+      summaryCardHtml(
         'รายการ',
         totals.totalRecords || 0
       ) +
 
-      summaryItemHtml(
+      summaryCardHtml(
         'จำนวนรอบ',
         totals.totalRounds || 0
       ) +
 
-      summaryItemHtml(
+      summaryCardHtml(
         'อนุญาต',
         totals.allowCount || 0,
         'success'
       ) +
 
-      summaryItemHtml(
+      summaryCardHtml(
         'ห้ามเข้า',
         totals.denyCount || 0,
         'danger'
       ) +
 
-      summaryItemHtml(
+      summaryCardHtml(
         'ค่าสูงสุด',
         formatMg(
           totals.maxValue
@@ -1423,17 +4435,17 @@
         ' Mg%'
       ) +
 
-      summaryItemHtml(
+      summaryCardHtml(
         'ภาพพร้อมดู',
         totals.imagesAvailable || 0
       ) +
 
-      summaryItemHtml(
+      summaryCardHtml(
         'ภาพถูกลบ',
         totals.imagesDeleted || 0
       ) +
 
-      summaryItemHtml(
+      summaryCardHtml(
         'ภาพมีปัญหา',
         totals.imageIssues || 0,
         'warning'
@@ -1457,8 +4469,7 @@
       );
     }
 
-    let html =
-      '';
+    let html = '';
 
     const totalDays =
       daysInMonth(
@@ -1478,7 +4489,7 @@
       index += 1
     ) {
       html +=
-        '<span class="history-day-empty"></span>';
+        '<span class="ahx-calendar-empty"></span>';
     }
 
     for (
@@ -1514,11 +4525,11 @@
       return (
         '<button ' +
           'type="button" ' +
-          'class="history-day no-data" ' +
+          'class="ahx-calendar-day" ' +
           'disabled' +
         '>' +
 
-          '<span class="history-day-number">' +
+          '<span class="ahx-day-number">' +
             day +
           '</span>' +
 
@@ -1527,7 +4538,7 @@
     }
 
     const classes = [
-      'history-day',
+      'ahx-calendar-day',
       'has-data'
     ];
 
@@ -1541,7 +4552,7 @@
       item.allImagesDeleted
     ) {
       classes.push(
-        'all-images-deleted'
+        'images-deleted'
       );
     }
 
@@ -1549,31 +4560,9 @@
       item.hasImageIssue
     ) {
       classes.push(
-        'has-image-issue'
+        'image-issue'
       );
     }
-
-    const title = [
-      displayDateKey(key),
-
-      'รายการ ' +
-        finiteNumber(
-          item.totalRecords,
-          0
-        ),
-
-      'ห้ามเข้า ' +
-        finiteNumber(
-          item.denyCount,
-          0
-        ),
-
-      'ภาพถูกลบ ' +
-        finiteNumber(
-          item.imagesDeleted,
-          0
-        )
-    ].join(' | ');
 
     return (
       '<button ' +
@@ -1581,47 +4570,67 @@
         'class="' +
           classes.join(' ') +
         '" ' +
-        'data-history-date="' +
+        'data-ahx-date="' +
           escapeAttribute(key) +
         '" ' +
         'title="' +
-          escapeAttribute(title) +
+          escapeAttribute(
+            displayDateKey(key) +
+            ' | ' +
+            item.totalRecords +
+            ' รายการ' +
+            ' | ห้ามเข้า ' +
+            item.denyCount
+          ) +
         '"' +
       '>' +
 
-        '<span class="history-day-number">' +
+        '<span class="ahx-day-number">' +
           day +
         '</span>' +
 
-        '<span class="history-day-count">' +
+        '<span class="ahx-day-badge">' +
           finiteNumber(
             item.totalRecords,
             0
           ) +
-          ' รายการ' +
         '</span>' +
 
-        '<span class="history-day-markers">' +
+        '<div class="ahx-day-footer">' +
 
-          (
-            item.hasDeny
-              ? '<i class="deny"></i>'
-              : ''
-          ) +
+          '<small>' +
+            finiteNumber(
+              item.totalRounds,
+              0
+            ) +
+            ' รอบ' +
+          '</small>' +
 
-          (
-            item.allImagesDeleted
-              ? '<i class="deleted"></i>'
-              : ''
-          ) +
+          '<span class="ahx-day-dots">' +
 
-          (
-            item.hasImageIssue
-              ? '<i class="issue"></i>'
-              : ''
-          ) +
+            '<i class="ahx-dot-data"></i>' +
 
-        '</span>' +
+            (
+              item.hasDeny
+                ? '<i class="ahx-dot-deny"></i>'
+                : ''
+            ) +
+
+            (
+              item.allImagesDeleted
+                ? '<i class="ahx-dot-deleted"></i>'
+                : ''
+            ) +
+
+            (
+              item.hasImageIssue
+                ? '<i class="ahx-dot-issue"></i>'
+                : ''
+            ) +
+
+          '</span>' +
+
+        '</div>' +
 
       '</button>'
     );
@@ -1629,198 +4638,82 @@
 
 
   /************************************************************
-   * Daily History
+   * Daily View
    ************************************************************/
 
-  async function showDay(
-    selectedDate,
-    page
-  ) {
-    const Swal =
-      getSwal();
-
-    let returnToCalendar =
-      false;
-
-    state.currentDate =
-      selectedDate;
-
-    state.currentPage =
-      Math.max(
-        1,
-        Number(page) || 1
-      );
-
-    releaseImageData();
-
-    await Swal.fire({
-      title:
-        '',
-
-      html:
-        dayShellHtml(
-          selectedDate
-        ),
-
-      width:
-        900,
-
-      showConfirmButton:
-        false,
-
-      showCloseButton:
-        true,
-
-      allowOutsideClick:
-        false,
-
-      customClass: {
-        popup:
-          'history-swal-popup history-day-popup',
-
-        htmlContainer:
-          'history-swal-html'
-      },
-
-      didOpen:
-        function () {
-          const back =
-            document.getElementById(
-              'historyBackToCalendar'
-            );
-
-          const closeImage =
-            document.getElementById(
-              'historyImageOverlayClose'
-            );
-
-          if (back) {
-            back.addEventListener(
-              'click',
-              function () {
-                returnToCalendar =
-                  true;
-
-                Swal.close();
-              }
-            );
-          }
-
-          if (closeImage) {
-            closeImage.addEventListener(
-              'click',
-              closeImageOverlay
-            );
-          }
-
-          loadDay(
-            selectedDate,
-            state.currentPage
-          );
-        },
-
-      willClose:
-        releaseImageData
-    });
-
-    if (
-      returnToCalendar &&
-      state.token
-    ) {
-      await showCalendar();
-    }
-  }
-
-
-  function dayShellHtml(
+  function renderDayView(
     selectedDate
   ) {
-    return (
-      '<div class="history-day-shell">' +
+    const root =
+      getElement(
+        'ahxRoot'
+      );
 
-        '<div class="history-day-top">' +
+    if (!root) {
+      return;
+    }
 
-          '<button ' +
-            'id="historyBackToCalendar" ' +
-            'type="button" ' +
-            'class="history-small-action"' +
-          '>' +
-            '‹ ปฏิทิน' +
-          '</button>' +
+    root.innerHTML =
+      '<div class="ahx-day-view">' +
 
-          '<div>' +
-            '<strong>' +
-              'ข้อมูลวันที่ ' +
-              escapeHtml(
-                displayDateKey(
-                  selectedDate
-                )
-              ) +
-            '</strong>' +
+        mainHeaderHtml(
+          'ข้อมูลวันที่ ' +
+          displayDateKey(
+            selectedDate
+          ),
 
-            '<small id="historyDayGenerated">' +
-              'กำลังโหลด...' +
-            '</small>' +
-          '</div>' +
+          'ผู้ใช้งาน: ' +
+          (
+            state.name ||
+            '-'
+          ),
 
-        '</div>' +
+          true
+        ) +
 
-        '<div ' +
-          'id="historyDaySummary" ' +
-          'class="history-day-summary"' +
-        '></div>' +
+        '<section ' +
+          'id="ahxDaySummary" ' +
+          'class="ahx-summary-grid"' +
+        '></section>' +
 
-        '<div ' +
-          'id="historyDayBreakdown" ' +
-          'class="history-day-breakdown"' +
-        '></div>' +
+        '<section ' +
+          'id="ahxDayBreakdown" ' +
+          'class="ahx-breakdown"' +
+        '></section>' +
 
-        '<div ' +
-          'id="historyDayRecords" ' +
-          'class="history-record-list"' +
+        '<section ' +
+          'id="ahxRecordList" ' +
+          'class="ahx-record-list"' +
         '>' +
           loadingHtml(
             'กำลังโหลดข้อมูลรายวัน...'
           ) +
-        '</div>' +
+        '</section>' +
 
-        '<div ' +
-          'id="historyDayPagination" ' +
-          'class="history-pagination"' +
-        '></div>' +
+        '<section ' +
+          'id="ahxPagination" ' +
+          'class="ahx-pagination"' +
+        '></section>' +
 
-        '<div ' +
-          'id="historyImageOverlay" ' +
-          'class="history-image-overlay" ' +
-          'hidden' +
-        '>' +
+      '</div>';
 
-          '<div class="history-image-card">' +
+    bindCommonHeaderEvents();
 
-            '<div class="history-image-head">' +
-              '<strong>' +
-                'ภาพหลักฐานที่เบลอแล้ว' +
-              '</strong>' +
+    const backButton =
+      getElement(
+        'ahxBackButton'
+      );
 
-              '<button ' +
-                'id="historyImageOverlayClose" ' +
-                'type="button" ' +
-                'aria-label="ปิดภาพ"' +
-              '>' +
-                '×' +
-              '</button>' +
-            '</div>' +
+    if (backButton) {
+      backButton.addEventListener(
+        'click',
+        renderCalendarView
+      );
+    }
 
-            '<div ' +
-              'id="historyImageContent" ' +
-              'class="history-image-content"' +
-            '></div>' +
-
-          '</div>' +
-
-        '</div>' +
-
-      '</div>'
+    loadDay(
+      selectedDate,
+      state.currentPage
     );
   }
 
@@ -1830,13 +4723,8 @@
     page
   ) {
     const records =
-      document.getElementById(
-        'historyDayRecords'
-      );
-
-    const generated =
-      document.getElementById(
-        'historyDayGenerated'
+      getElement(
+        'ahxRecordList'
       );
 
     if (!records) {
@@ -1847,10 +4735,6 @@
       loadingHtml(
         'กำลังโหลดข้อมูลรายวัน...'
       );
-
-    setDayNavigationDisabled(
-      true
-    );
 
     try {
       const result =
@@ -1878,13 +4762,13 @@
           ? result.pagination.page
           : page;
 
-      renderDay(
+      renderDayData(
         result
       );
 
     } catch (error) {
       if (
-        await handleExpiredSession(
+        handleAuthFailure(
           error
         )
       ) {
@@ -1893,89 +4777,65 @@
 
       records.innerHTML =
         errorHtml(
-          error &&
-          error.message
-            ? error.message
-            : 'โหลดข้อมูลรายวันไม่สำเร็จ'
+          cleanText(
+            error &&
+            error.message
+          ) ||
+          'โหลดข้อมูลรายวันไม่สำเร็จ'
         );
-
-      if (generated) {
-        generated.textContent =
-          'โหลดข้อมูลไม่สำเร็จ';
-      }
-
-    } finally {
-      setDayNavigationDisabled(
-        false
-      );
     }
   }
 
 
-  function renderDay(data) {
+  function renderDayData(data) {
     const summary =
-      document.getElementById(
-        'historyDaySummary'
+      getElement(
+        'ahxDaySummary'
       );
 
     const breakdown =
-      document.getElementById(
-        'historyDayBreakdown'
+      getElement(
+        'ahxDayBreakdown'
       );
 
     const records =
-      document.getElementById(
-        'historyDayRecords'
+      getElement(
+        'ahxRecordList'
       );
 
     const pagination =
-      document.getElementById(
-        'historyDayPagination'
-      );
-
-    const generated =
-      document.getElementById(
-        'historyDayGenerated'
+      getElement(
+        'ahxPagination'
       );
 
     const day =
       data.summary || {};
 
-    if (generated) {
-      generated.textContent =
-        data.generatedAt
-          ? (
-            'อัปเดต ' +
-            data.generatedAt
-          )
-          : '';
-    }
-
     if (summary) {
       summary.innerHTML =
-        summaryItemHtml(
+        summaryCardHtml(
           'รายการ',
           day.totalRecords || 0
         ) +
 
-        summaryItemHtml(
+        summaryCardHtml(
           'จำนวนรอบ',
           day.totalRounds || 0
         ) +
 
-        summaryItemHtml(
+        summaryCardHtml(
           'อนุญาต',
           day.allowCount || 0,
           'success'
         ) +
 
-        summaryItemHtml(
+        summaryCardHtml(
           'ห้ามเข้า',
           day.denyCount || 0,
           'danger'
         ) +
 
-        summaryItemHtml(
+        summaryCardHtml(
           'ค่าสูงสุด',
           formatMg(
             day.maxValue
@@ -1983,17 +4843,17 @@
           ' Mg%'
         ) +
 
-        summaryItemHtml(
+        summaryCardHtml(
           'ภาพพร้อมดู',
           day.imagesAvailable || 0
         ) +
 
-        summaryItemHtml(
+        summaryCardHtml(
           'ภาพถูกลบ',
           day.imagesDeleted || 0
         ) +
 
-        summaryItemHtml(
+        summaryCardHtml(
           'ภาพมีปัญหา',
           day.imageIssues || 0,
           'warning'
@@ -2015,14 +4875,16 @@
 
       records.innerHTML =
         list.length
-          ? list.map(
-            recordHtml
-          ).join('')
+          ? list
+            .map(
+              recordHtml
+            )
+            .join('')
           : emptyHtml(
             'ไม่พบข้อมูลในวันที่เลือก'
           );
 
-      bindRecordImageButtons();
+      bindImageButtons();
     }
 
     if (pagination) {
@@ -2037,7 +4899,7 @@
 
 
   function breakdownHtml(summary) {
-    let html =
+    return (
       objectChipsHtml(
         'จุดตรวจ',
         summary.byCheckpoint
@@ -2046,35 +4908,35 @@
       objectChipsHtml(
         'ประเภทบุคคล',
         summary.byPersonType
-      );
+      ) +
 
-    if (
-      summary.firstTime ||
-      summary.lastTime
-    ) {
-      html +=
-        '<div class="history-breakdown-group">' +
-          '<strong>' +
-            'ช่วงเวลาตรวจ' +
-          '</strong>' +
+      (
+        summary.firstTime ||
+        summary.lastTime
+          ? (
+            '<div class="ahx-breakdown-row">' +
+              '<strong>' +
+                'ช่วงเวลาตรวจ' +
+              '</strong>' +
 
-          '<div class="history-chip-list">' +
-            '<span class="history-chip">' +
-              escapeHtml(
-                summary.firstTime ||
-                '--:--:--'
-              ) +
-              ' - ' +
-              escapeHtml(
-                summary.lastTime ||
-                '--:--:--'
-              ) +
-            '</span>' +
-          '</div>' +
-        '</div>';
-    }
-
-    return html;
+              '<div class="ahx-chip-list">' +
+                '<span class="ahx-chip">' +
+                  escapeHtml(
+                    summary.firstTime ||
+                    '--:--:--'
+                  ) +
+                  ' - ' +
+                  escapeHtml(
+                    summary.lastTime ||
+                    '--:--:--'
+                  ) +
+                '</span>' +
+              '</div>' +
+            '</div>'
+          )
+          : ''
+      )
+    );
   }
 
 
@@ -2085,7 +4947,7 @@
     const entries =
       source &&
       typeof source ===
-        'object'
+      'object'
         ? Object.entries(source)
         : [];
 
@@ -2094,19 +4956,19 @@
     }
 
     return (
-      '<div class="history-breakdown-group">' +
+      '<div class="ahx-breakdown-row">' +
 
         '<strong>' +
           escapeHtml(title) +
         '</strong>' +
 
-        '<div class="history-chip-list">' +
+        '<div class="ahx-chip-list">' +
 
           entries
             .map(
               function (entry) {
                 return (
-                  '<span class="history-chip">' +
+                  '<span class="ahx-chip">' +
                     escapeHtml(
                       entry[0]
                     ) +
@@ -2128,29 +4990,53 @@
   }
 
 
+  function metaItemHtml(
+    label,
+    value
+  ) {
+    return (
+      '<div class="ahx-meta-item">' +
+
+        '<small>' +
+          escapeHtml(label) +
+        '</small>' +
+
+        '<strong>' +
+          escapeHtml(
+            value ||
+            '-'
+          ) +
+        '</strong>' +
+
+      '</div>'
+    );
+  }
+
+
+  function valueCardHtml(
+    label,
+    value
+  ) {
+    return (
+      '<div class="ahx-value-card">' +
+
+        escapeHtml(label) +
+
+        '<b>' +
+          escapeHtml(value) +
+        '</b>' +
+
+      '</div>'
+    );
+  }
+
+
   function recordHtml(record) {
     const deny =
       cleanText(
         record.status
       ).toUpperCase() ===
       'DENY';
-
-    const organization =
-      record.organizationValue
-        ? (
-          '<span>' +
-            escapeHtml(
-              record.organizationType ||
-              'บริษัท/สายรถ'
-            ) +
-            ': <b>' +
-            escapeHtml(
-              record.organizationValue
-            ) +
-            '</b>' +
-          '</span>'
-        )
-        : '';
 
     const rounds =
       Array.isArray(
@@ -2160,39 +5046,42 @@
         : [];
 
     return (
-      '<article class="history-record-card ' +
+      '<article class="ahx-record ' +
         (
           deny
-            ? 'is-deny'
-            : 'is-allow'
+            ? 'deny'
+            : 'allow'
         ) +
       '">' +
 
-        '<div class="history-record-head">' +
+        '<div class="ahx-record-head">' +
 
-          '<div>' +
-            '<time>' +
+          '<div class="ahx-record-person">' +
+
+            '<span class="ahx-record-time">' +
               escapeHtml(
                 record.time ||
                 '--:--:--'
               ) +
-            '</time>' +
+            '</span>' +
 
-            '<strong>' +
+            '<strong class="ahx-record-name">' +
               escapeHtml(
                 record.personName ||
                 'ไม่ระบุชื่อ'
               ) +
             '</strong>' +
+
           '</div>' +
 
-          '<span class="history-status-badge ' +
+          '<span class="ahx-status-badge ' +
             (
               deny
                 ? 'deny'
                 : 'allow'
             ) +
           '">' +
+
             escapeHtml(
               record.statusMessage ||
               (
@@ -2201,115 +5090,106 @@
                   : 'อนุญาต'
               )
             ) +
+
           '</span>' +
 
         '</div>' +
 
-        '<div class="history-record-meta">' +
 
-          '<span>' +
-            'ประเภท: <b>' +
-            escapeHtml(
-              record.personType ||
-              '-'
-            ) +
-            '</b>' +
-          '</span>' +
+        '<div class="ahx-record-meta">' +
 
-          organization +
+          metaItemHtml(
+            'ประเภทบุคคล',
+            record.personType
+          ) +
 
-          '<span>' +
-            'จุดตรวจ: <b>' +
-            escapeHtml(
-              record.checkpoint ||
-              '-'
-            ) +
-            '</b>' +
-          '</span>' +
+          metaItemHtml(
+            record.organizationType ||
+            'บริษัท/สายรถ',
 
-          '<span>' +
-            'ผู้ตรวจ: <b>' +
-            escapeHtml(
-              record.inspector ||
-              '-'
-            ) +
-            '</b>' +
-          '</span>' +
+            record.organizationValue
+          ) +
 
-        '</div>' +
+          metaItemHtml(
+            'จุดตรวจ',
+            record.checkpoint
+          ) +
 
-        '<div class="history-value-row">' +
-
-          '<span>' +
-            'รอบ <b>' +
-            escapeHtml(
-              record.roundCount || 0
-            ) +
-            '</b>' +
-          '</span>' +
-
-          '<span>' +
-            'ครั้งแรก <b>' +
-            formatMg(
-              record.firstValueMg
-            ) +
-            '</b>' +
-          '</span>' +
-
-          '<span>' +
-            'ล่าสุด <b>' +
-            formatMg(
-              record.lastValueMg
-            ) +
-            '</b>' +
-          '</span>' +
-
-          '<span>' +
-            'สูงสุด <b>' +
-            formatMg(
-              record.maxValueMg
-            ) +
-            '</b> Mg%' +
-          '</span>' +
-
-        '</div>' +
-
-        '<div class="history-record-image-status">' +
-
-          '<span>' +
-            escapeHtml(
-              record.imageStatusText ||
-              'ไม่ทราบสถานะภาพ'
-            ) +
-          '</span>' +
-
-          (
-            record.imageDeletedAt
-              ? (
-                '<small>' +
-                  'วันที่ดำเนินการ: ' +
-                  escapeHtml(
-                    record.imageDeletedAt
-                  ) +
-                '</small>'
-              )
-              : (
-                record.imageExpireAt
-                  ? (
-                    '<small>' +
-                      'กำหนดลบ: ' +
-                      escapeHtml(
-                        record.imageExpireAt
-                      ) +
-                    '</small>'
-                  )
-                  : ''
-              )
+          metaItemHtml(
+            'ผู้ตรวจวัด',
+            record.inspector
           ) +
 
         '</div>' +
 
-        '<div class="history-round-list">' +
+
+        '<div class="ahx-value-grid">' +
+
+          valueCardHtml(
+            'จำนวนรอบ',
+            String(
+              record.roundCount ||
+              0
+            )
+          ) +
+
+          valueCardHtml(
+            'ครั้งแรก',
+            formatMg(
+              record.firstValueMg
+            )
+          ) +
+
+          valueCardHtml(
+            'ล่าสุด',
+            formatMg(
+              record.lastValueMg
+            )
+          ) +
+
+          valueCardHtml(
+            'สูงสุด Mg%',
+            formatMg(
+              record.maxValueMg
+            )
+          ) +
+
+        '</div>' +
+
+
+        '<div class="ahx-image-status">' +
+
+          '<strong>' +
+            escapeHtml(
+              record.imageStatusText ||
+              'ไม่ทราบสถานะภาพ'
+            ) +
+          '</strong>' +
+
+          '<small>' +
+
+            escapeHtml(
+              record.imageDeletedAt
+                ? (
+                  'ดำเนินการ ' +
+                  record.imageDeletedAt
+                )
+                : (
+                  record.imageExpireAt
+                    ? (
+                      'กำหนดลบ ' +
+                      record.imageExpireAt
+                    )
+                    : ''
+                )
+            ) +
+
+          '</small>' +
+
+        '</div>' +
+
+
+        '<div class="ahx-round-list">' +
 
           (
             rounds.length
@@ -2323,18 +5203,18 @@
                   }
                 )
                 .join('')
-              : (
-                '<small>' +
-                  'ไม่พบรายละเอียดรอบตรวจ' +
-                '</small>'
+              : emptyHtml(
+                'ไม่พบรายละเอียดรอบตรวจ'
               )
           ) +
 
         '</div>' +
 
-        '<div class="history-record-id">' +
+
+        '<div class="ahx-record-id">' +
           escapeHtml(
-            record.recordId || ''
+            record.recordId ||
+            ''
           ) +
         '</div>' +
 
@@ -2347,10 +5227,30 @@
     recordId,
     round
   ) {
-    return (
-      '<div class="history-round-row">' +
+    const detailDate =
+      cleanText(
+        round.measuredAt
+      );
 
-        '<div class="history-round-main">' +
+    const deletedOrExpire =
+      round.imageDeletedAt
+        ? (
+          'ลบเมื่อ ' +
+          round.imageDeletedAt
+        )
+        : (
+          round.imageExpireAt
+            ? (
+              'กำหนดลบ ' +
+              round.imageExpireAt
+            )
+            : ''
+        );
+
+    return (
+      '<div class="ahx-round">' +
+
+        '<div class="ahx-round-main">' +
 
           '<strong>' +
             'รอบ ' +
@@ -2360,63 +5260,47 @@
             ) +
           '</strong>' +
 
-          '<span>' +
+          '<b>' +
             formatMg(
               round.valueMg
             ) +
             ' Mg%' +
-          '</span>' +
+          '</b>' +
 
           '<small>' +
             escapeHtml(
-              round.measuredAt || ''
+              detailDate
             ) +
           '</small>' +
 
         '</div>' +
 
-        '<div class="history-round-image">' +
 
-          '<span>' +
+        '<div class="ahx-round-photo">' +
+
+          '<strong>' +
             escapeHtml(
               round.imageStatusText ||
               'ไม่ทราบสถานะภาพ'
             ) +
-          '</span>' +
+          '</strong>' +
 
-          (
-            round.imageDeletedAt
-              ? (
-                '<small>' +
-                  'ลบเมื่อ ' +
-                  escapeHtml(
-                    round.imageDeletedAt
-                  ) +
-                '</small>'
-              )
-              : (
-                round.imageExpireAt
-                  ? (
-                    '<small>' +
-                      'กำหนดลบ ' +
-                      escapeHtml(
-                        round.imageExpireAt
-                      ) +
-                    '</small>'
-                  )
-                  : ''
-              )
-          ) +
+          '<small>' +
+            escapeHtml(
+              deletedOrExpire
+            ) +
+          '</small>' +
 
         '</div>' +
 
+
         (
           round.canViewImage ===
-            true
+          true
             ? (
               '<button ' +
                 'type="button" ' +
-                'class="history-view-image-button" ' +
+                'class="ahx-view-image" ' +
                 'data-record-id="' +
                   escapeAttribute(
                     recordId
@@ -2432,7 +5316,7 @@
               '</button>'
             )
             : (
-              '<span class="history-image-unavailable">' +
+              '<span class="ahx-no-image">' +
                 'ไม่มีภาพ' +
               '</span>'
             )
@@ -2443,10 +5327,10 @@
   }
 
 
-  function bindRecordImageButtons() {
+  function bindImageButtons() {
     document
       .querySelectorAll(
-        '.history-view-image-button'
+        '.ahx-view-image'
       )
       .forEach(
         function (button) {
@@ -2471,10 +5355,6 @@
   }
 
 
-  /************************************************************
-   * Pagination
-   ************************************************************/
-
   function paginationHtml(
     pagination
   ) {
@@ -2483,7 +5363,8 @@
         1,
         Number(
           pagination.page
-        ) || 1
+        ) ||
+        1
       );
 
     const totalPages =
@@ -2491,12 +5372,13 @@
         1,
         Number(
           pagination.totalPages
-        ) || 1
+        ) ||
+        1
       );
 
     return (
       '<button ' +
-        'id="historyPreviousPage" ' +
+        'id="ahxPreviousPage" ' +
         'type="button" ' +
         (
           pagination.hasPrevious
@@ -2521,10 +5403,11 @@
           ) +
           ' รายการ' +
         '</small>' +
+
       '</span>' +
 
       '<button ' +
-        'id="historyNextPage" ' +
+        'id="ahxNextPage" ' +
         'type="button" ' +
         (
           pagination.hasNext
@@ -2539,63 +5422,50 @@
 
 
   function bindPaginationEvents() {
-    const previous =
-      document.getElementById(
-        'historyPreviousPage'
+    const previousButton =
+      getElement(
+        'ahxPreviousPage'
       );
 
-    const next =
-      document.getElementById(
-        'historyNextPage'
+    const nextButton =
+      getElement(
+        'ahxNextPage'
       );
 
-    if (previous) {
-      previous.addEventListener(
+    if (previousButton) {
+      previousButton.addEventListener(
         'click',
         function () {
           if (
-            state.currentPage > 1
+            state.currentPage >
+            1
           ) {
+            state.currentPage -=
+              1;
+
             loadDay(
               state.currentDate,
-              state.currentPage - 1
+              state.currentPage
             );
           }
         }
       );
     }
 
-    if (next) {
-      next.addEventListener(
+    if (nextButton) {
+      nextButton.addEventListener(
         'click',
         function () {
+          state.currentPage +=
+            1;
+
           loadDay(
             state.currentDate,
-            state.currentPage + 1
+            state.currentPage
           );
         }
       );
     }
-  }
-
-
-  function setDayNavigationDisabled(
-    disabled
-  ) {
-    [
-      'historyPreviousPage',
-      'historyNextPage'
-    ].forEach(
-      function (id) {
-        const element =
-          document.getElementById(id);
-
-        if (element) {
-          element.disabled =
-            Boolean(disabled);
-        }
-      }
-    );
   }
 
 
@@ -2607,32 +5477,88 @@
     recordId,
     roundId
   ) {
+    closeImageOverlay();
+
     const overlay =
-      document.getElementById(
-        'historyImageOverlay'
+      document.createElement(
+        'div'
       );
 
-    const content =
-      document.getElementById(
-        'historyImageContent'
+    overlay.id =
+      'ahxImageOverlay';
+
+    overlay.className =
+      'ahx-image-overlay';
+
+    overlay.innerHTML =
+      '<div ' +
+        'class="ahx-image-dialog" ' +
+        'role="dialog" ' +
+        'aria-modal="true"' +
+      '>' +
+
+        '<div class="ahx-image-head">' +
+
+          '<strong>' +
+            'ภาพหลักฐานที่เบลอแล้ว' +
+          '</strong>' +
+
+          '<button ' +
+            'id="ahxImageClose" ' +
+            'type="button" ' +
+            'aria-label="ปิดภาพ"' +
+          '>' +
+            '×' +
+          '</button>' +
+
+        '</div>' +
+
+        '<div ' +
+          'id="ahxImageBody" ' +
+          'class="ahx-image-body"' +
+        '>' +
+
+          loadingHtml(
+            'กำลังโหลดภาพ...'
+          ) +
+
+        '</div>' +
+
+      '</div>';
+
+    document.body
+      .appendChild(
+        overlay
       );
 
-    if (
-      !overlay ||
-      !content
-    ) {
-      return;
+    const closeButton =
+      getElement(
+        'ahxImageClose'
+      );
+
+    const body =
+      getElement(
+        'ahxImageBody'
+      );
+
+    if (closeButton) {
+      closeButton.addEventListener(
+        'click',
+        closeImageOverlay
+      );
     }
 
-    releaseImageData();
-
-    overlay.hidden =
-      false;
-
-    content.innerHTML =
-      loadingHtml(
-        'กำลังโหลดภาพที่เบลอแล้ว...'
-      );
+    overlay.addEventListener(
+      'click',
+      function (event) {
+        if (
+          event.target ===
+          overlay
+        ) {
+          closeImageOverlay();
+        }
+      }
+    );
 
     try {
       const result =
@@ -2651,11 +5577,15 @@
               roundId
           });
 
+      if (!body) {
+        return;
+      }
+
       if (
         !result.available ||
         !result.dataUrl
       ) {
-        content.innerHTML =
+        body.innerHTML =
           emptyHtml(
             result.imageStatusText ||
             'ภาพนี้ไม่พร้อมแสดง'
@@ -2664,12 +5594,12 @@
           (
             result.imageDeletedAt
               ? (
-                '<small class="history-image-note">' +
+                '<div class="ahx-image-caption">' +
                   'วันที่ดำเนินการ: ' +
                   escapeHtml(
                     result.imageDeletedAt
                   ) +
-                '</small>'
+                '</div>'
               )
               : ''
           );
@@ -2680,55 +5610,72 @@
       state.imageDataUrl =
         result.dataUrl;
 
-      content.innerHTML =
-        '<img ' +
-          'src="' +
-            escapeAttribute(
-              result.dataUrl
-            ) +
-          '" ' +
-          'alt="ภาพหลักฐานที่เบลอแล้ว"' +
-        '>' +
+      body.innerHTML =
+        '';
 
-        '<small class="history-image-note">' +
-          escapeHtml(
-            recordId
-          ) +
-          ' / ' +
-          escapeHtml(
-            roundId
-          ) +
-        '</small>';
+      const image =
+        document.createElement(
+          'img'
+        );
+
+      image.alt =
+        'ภาพหลักฐานที่เบลอแล้ว';
+
+      image.src =
+        result.dataUrl;
+
+      const caption =
+        document.createElement(
+          'div'
+        );
+
+      caption.className =
+        'ahx-image-caption';
+
+      caption.textContent =
+        recordId +
+        ' / ' +
+        roundId;
+
+      body.appendChild(
+        image
+      );
+
+      body.appendChild(
+        caption
+      );
 
     } catch (error) {
       if (
-        await handleExpiredSession(
+        handleAuthFailure(
           error
         )
       ) {
         return;
       }
 
-      content.innerHTML =
-        errorHtml(
-          error &&
-          error.message
-            ? error.message
-            : 'ไม่สามารถโหลดภาพได้'
-        );
+      if (body) {
+        body.innerHTML =
+          errorHtml(
+            cleanText(
+              error &&
+              error.message
+            ) ||
+            'ไม่สามารถโหลดภาพได้'
+          );
+      }
     }
   }
 
 
   function closeImageOverlay() {
     const overlay =
-      document.getElementById(
-        'historyImageOverlay'
+      getElement(
+        'ahxImageOverlay'
       );
 
     if (overlay) {
-      overlay.hidden =
-        true;
+      overlay.remove();
     }
 
     releaseImageData();
@@ -2738,7 +5685,7 @@
   function releaseImageData() {
     const image =
       document.querySelector(
-        '#historyImageContent img'
+        '#ahxImageOverlay img'
       );
 
     if (image) {
@@ -2753,8 +5700,32 @@
 
 
   /************************************************************
-   * Logout / Expired Session
+   * Auth Failure / Logout
    ************************************************************/
+
+  function handleAuthFailure(error) {
+    if (!isAuthError(error)) {
+      return false;
+    }
+
+    clearSession();
+    closeImageOverlay();
+
+    getSwal().close();
+
+    window.setTimeout(
+      function () {
+        state.opening =
+          false;
+
+        openHistory();
+      },
+      180
+    );
+
+    return true;
+  }
+
 
   async function logoutHistory() {
     const Swal =
@@ -2780,6 +5751,7 @@
     }
 
     clearSession();
+    closeImageOverlay();
 
     Swal.close();
 
@@ -2791,7 +5763,7 @@
         'ออกจากระบบแล้ว',
 
       timer:
-        800,
+        850,
 
       showConfirmButton:
         false
@@ -2799,55 +5771,16 @@
   }
 
 
-  async function handleExpiredSession(
-    error
-  ) {
-    if (!isAuthError(error)) {
-      return false;
-    }
-
-    clearSession();
-
-    const Swal =
-      getSwal();
-
-    Swal.close();
-
-    await Swal.fire({
-      icon:
-        'warning',
-
-      title:
-        'Session หมดอายุ',
-
-      text:
-        'กรุณาเข้าสู่ระบบใหม่',
-
-      confirmButtonText:
-        'เข้าสู่ระบบ'
-    });
-
-    const loggedIn =
-      await showLogin();
-
-    if (loggedIn) {
-      await showCalendar();
-    }
-
-    return true;
-  }
-
-
   /************************************************************
-   * Common UI
+   * State Messages
    ************************************************************/
 
   function loadingHtml(message) {
     return (
-      '<div class="history-state-message loading">' +
+      '<div class="ahx-state">' +
 
         '<span ' +
-          'class="history-spinner" ' +
+          'class="ahx-spinner" ' +
           'aria-hidden="true"' +
         '></span>' +
 
@@ -2862,7 +5795,7 @@
 
   function errorHtml(message) {
     return (
-      '<div class="history-state-message error">' +
+      '<div class="ahx-state error">' +
 
         '<strong>' +
           'เกิดข้อผิดพลาด' +
@@ -2879,7 +5812,7 @@
 
   function emptyHtml(message) {
     return (
-      '<div class="history-state-message empty">' +
+      '<div class="ahx-state">' +
 
         '<span>' +
           escapeHtml(message) +
@@ -2894,10 +5827,11 @@
     error
   ) {
     const message =
-      error &&
-      error.message
-        ? error.message
-        : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
+      cleanText(
+        error &&
+        error.message
+      ) ||
+      'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
 
     if (hasSweetAlert()) {
       await getSwal()
@@ -2925,8 +5859,66 @@
 
 
   /************************************************************
-   * Initialize
+   * Open / Initialize
    ************************************************************/
+
+  async function openHistory() {
+    if (state.opening) {
+      return;
+    }
+
+    if (!API) {
+      window.alert(
+        'ไม่พบ AlcoholAPI กรุณาตรวจสอบลำดับการโหลดไฟล์'
+      );
+
+      return;
+    }
+
+    if (!hasSweetAlert()) {
+      window.alert(
+        'ไม่พบ SweetAlert2 กรุณาตรวจสอบ index.html'
+      );
+
+      return;
+    }
+
+    state.opening =
+      true;
+
+    setButtonBusy(
+      true
+    );
+
+    pauseCamera();
+
+    try {
+      const authenticated =
+        await ensureAuthenticated();
+
+      if (authenticated) {
+        await showMainModal();
+      }
+
+    } catch (error) {
+      await showGeneralError(
+        error
+      );
+
+    } finally {
+      state.opening =
+        false;
+
+      setButtonBusy(
+        false
+      );
+
+      closeImageOverlay();
+
+      resumeCamera();
+    }
+  }
+
 
   function initialize() {
     if (state.initialized) {
@@ -2936,6 +5928,7 @@
     state.initialized =
       true;
 
+    injectStyles();
     loadSession();
 
     const button =
