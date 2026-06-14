@@ -4,10 +4,10 @@
  * ระบบตรวจวัดปริมาณแอลกอฮอล์
  *
  * Mobile First
- * - กล้องเป็นพื้นที่หลัก
- * - Gauge แนวตั้งขนาดเล็กชิดกล้อง
- * - ช่องกรอกขนาดเหมาะกับการสัมผัส
- * - รายการรอบตรวจกะทัดรัด
+ * - ข้อมูลสองช่องต่อแถว
+ * - กล้องขนาดใหญ่
+ * - Gauge แนวตั้งขนาดเล็กชิดขอบกล้อง
+ * - รองรับ app.js เดิมที่คำนวณ width / left
  ************************************************************/
 
 
@@ -16,7 +16,7 @@
  ************************************************************/
 
 :root {
-  --app-bg:
+  --bg:
     #edf3f6;
 
   --surface:
@@ -25,89 +25,59 @@
   --surface-soft:
     #f5f8fa;
 
-  --surface-muted:
-    #eaf0f3;
-
   --primary:
     #123f5b;
 
   --primary-dark:
-    #082b40;
-
-  --primary-deep:
-    #061f30;
+    #082d43;
 
   --primary-light:
-    #e4f3fa;
+    #e7f3f9;
 
   --text:
-    #15242d;
-
-  --text-soft:
-    #405560;
+    #17262f;
 
   --muted:
-    #6b7d87;
+    #667985;
 
   --border:
-    #d4dfe5;
-
-  --border-dark:
-    #b7c7cf;
+    #d5e0e6;
 
   --success:
     #16844f;
 
-  --success-dark:
-    #0b653b;
-
-  --success-soft:
-    #eaf8f0;
-
   --warning:
-    #ffd400;
+    #f0c400;
 
   --orange:
-    #ef7900;
+    #ed7700;
 
   --danger:
     #d62929;
-
-  --danger-dark:
-    #a90000;
-
-  --danger-soft:
-    #fff0f0;
 
   --critical:
     #ff0000;
 
   --shadow:
-    0 5px 18px
-    rgba(
-      10,
-      46,
-      68,
-      0.09
-    );
+    0 7px 22px
+    rgba(16, 56, 80, 0.10);
 
   --shadow-strong:
-    0 16px 42px
-    rgba(
-      3,
-      22,
-      34,
-      0.28
-    );
+    0 18px 48px
+    rgba(5, 30, 45, 0.28);
 
   --radius:
     13px;
 
-  --radius-small:
-    9px;
-
   --gauge-width:
     36px;
+
+  --camera-height:
+    clamp(
+      340px,
+      52svh,
+      500px
+    );
 
   --safe-top:
     env(
@@ -143,7 +113,7 @@ html {
     100%;
 
   background:
-    var(--app-bg);
+    var(--bg);
 
   scroll-behavior:
     smooth;
@@ -173,7 +143,7 @@ body {
     var(--text);
 
   background:
-    var(--app-bg);
+    var(--bg);
 
   font-family:
     system-ui,
@@ -196,8 +166,7 @@ body {
 
 button,
 input,
-select,
-textarea {
+select {
   font:
     inherit;
 }
@@ -228,8 +197,7 @@ button:disabled {
 
 
 input,
-select,
-textarea {
+select {
   -webkit-tap-highlight-color:
     transparent;
 }
@@ -256,7 +224,7 @@ fieldset {
 
 
 /************************************************************
- * App Shell
+ * Application Shell
  ************************************************************/
 
 .app-shell {
@@ -314,18 +282,13 @@ fieldset {
   background:
     linear-gradient(
       135deg,
-      var(--primary-deep),
+      var(--primary-dark),
       var(--primary)
     );
 
   box-shadow:
-    0 3px 13px
-    rgba(
-      4,
-      31,
-      46,
-      0.25
-    );
+    0 4px 15px
+    rgba(5, 35, 52, 0.23);
 }
 
 
@@ -347,6 +310,12 @@ fieldset {
 }
 
 
+.topbar-title > div {
+  min-width:
+    0;
+}
+
+
 .app-icon {
   display:
     grid;
@@ -365,12 +334,7 @@ fieldset {
 
   border:
     2px solid
-    rgba(
-      255,
-      255,
-      255,
-      0.90
-    );
+    rgba(255, 255, 255, 0.90);
 
   border-radius:
     10px;
@@ -386,13 +350,6 @@ fieldset {
 
   line-height:
     1;
-}
-
-
-.topbar-title-text,
-.topbar-title > div {
-  min-width:
-    0;
 }
 
 
@@ -413,7 +370,7 @@ fieldset {
     850;
 
   line-height:
-    1.22;
+    1.2;
 
   text-overflow:
     ellipsis;
@@ -431,18 +388,13 @@ fieldset {
     hidden;
 
   color:
-    rgba(
-      255,
-      255,
-      255,
-      0.70
-    );
+    rgba(255, 255, 255, 0.70);
 
   font-size:
     8px;
 
   line-height:
-    1.25;
+    1.2;
 
   text-overflow:
     ellipsis;
@@ -504,16 +456,8 @@ fieldset {
   border-radius:
     999px;
 
-  color:
-    #ffffff;
-
   background:
-    rgba(
-      255,
-      255,
-      255,
-      0.13
-    );
+    rgba(255, 255, 255, 0.13);
 
   font-size:
     7px;
@@ -552,7 +496,7 @@ fieldset {
 
 .connection-badge.is-online {
   color:
-    #90ffc2;
+    #8fffc1;
 }
 
 
@@ -620,7 +564,7 @@ fieldset {
 
 .system-status.loading {
   color:
-    #826800;
+    #806700;
 }
 
 
@@ -674,7 +618,120 @@ fieldset {
 
 
 /************************************************************
- * Main
+ * Alert Banner
+ ************************************************************/
+
+.alert-banner {
+  position:
+    sticky;
+
+  top:
+    calc(
+      56px +
+      var(--safe-top)
+    );
+
+  z-index:
+    105;
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  gap:
+    7px;
+
+  margin:
+    5px 6px;
+
+  padding:
+    7px 9px;
+
+  border:
+    1px solid
+    #ff8f8f;
+
+  border-radius:
+    10px;
+
+  color:
+    #ffffff;
+
+  background:
+    linear-gradient(
+      135deg,
+      #a90000,
+      #e90000
+    );
+
+  box-shadow:
+    0 5px 16px
+    rgba(190, 0, 0, 0.24);
+}
+
+
+.alert-symbol {
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  flex:
+    0 0 26px;
+
+  width:
+    26px;
+
+  height:
+    26px;
+
+  border:
+    2px solid
+    #ffffff;
+
+  border-radius:
+    50%;
+
+  font-size:
+    17px;
+
+  font-weight:
+    900;
+}
+
+
+.alert-content {
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  gap:
+    1px;
+
+  min-width:
+    0;
+
+  font-size:
+    9px;
+
+  line-height:
+    1.3;
+}
+
+
+.alert-content strong {
+  font-size:
+    11px;
+}
+
+
+/************************************************************
+ * Main Content
  ************************************************************/
 
 .main-content {
@@ -682,7 +739,7 @@ fieldset {
     100%;
 
   max-width:
-    960px;
+    1000px;
 
   margin:
     0 auto;
@@ -702,12 +759,24 @@ fieldset {
 
 
 /************************************************************
- * Generic Card
+ * Person Panel
  ************************************************************/
 
-.mobile-card {
-  overflow:
-    hidden;
+.person-panel {
+  display:
+    grid;
+
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+
+  gap:
+    7px;
+
+  padding:
+    8px;
 
   border:
     1px solid
@@ -724,69 +793,514 @@ fieldset {
 }
 
 
-.person-information-card,
-.inspection-control-card,
-.round-card {
-  padding:
-    9px;
+.compact-field {
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  gap:
+    3px;
+
+  min-width:
+    0;
 }
 
 
-.card-heading {
+.compact-field-wide {
+  grid-column:
+    1 / -1;
+}
+
+
+.compact-field label {
+  overflow:
+    hidden;
+
+  color:
+    #40545f;
+
+  font-size:
+    9px;
+
+  font-weight:
+    800;
+
+  line-height:
+    1.25;
+
+  text-overflow:
+    ellipsis;
+
+  white-space:
+    nowrap;
+}
+
+
+.compact-field input,
+.compact-field select {
+  width:
+    100%;
+
+  min-width:
+    0;
+
+  min-height:
+    40px;
+
+  padding:
+    7px 8px;
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius:
+    9px;
+
+  outline:
+    none;
+
+  color:
+    var(--text);
+
+  background:
+    #ffffff;
+
+  font-size:
+    12px;
+}
+
+
+.compact-field input::placeholder {
+  color:
+    #9aa9b1;
+}
+
+
+.compact-field input:focus,
+.compact-field select:focus {
+  border-color:
+    #4397c2;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(67, 151, 194, 0.13);
+}
+
+
+/************************************************************
+ * Camera Monitor
+ ************************************************************/
+
+.camera-monitor {
+  display:
+    grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    var(--gauge-width);
+
+  width:
+    100%;
+
+  height:
+    var(--camera-height);
+
+  min-height:
+    340px;
+
+  overflow:
+    hidden;
+
+  border:
+    1px solid
+    #253944;
+
+  border-radius:
+    var(--radius);
+
+  background:
+    #050b0f;
+
+  box-shadow:
+    var(--shadow);
+}
+
+
+/************************************************************
+ * Camera
+ ************************************************************/
+
+.camera-stage {
+  position:
+    relative;
+
   display:
     flex;
 
   align-items:
     center;
 
-  gap:
-    8px;
+  justify-content:
+    center;
 
-  margin-bottom:
-    8px;
-}
+  overflow:
+    hidden;
 
+  width:
+    100%;
 
-.card-heading > div {
   min-width:
     0;
+
+  min-height:
+    0;
+
+  height:
+    100%;
+
+  background:
+    #050b0f;
 }
 
 
-.card-heading h2 {
-  margin:
+.camera-stage video {
+  position:
+    absolute;
+
+  inset:
     0;
 
+  display:
+    block;
+
+  width:
+    100%;
+
+  height:
+    100%;
+
+  object-fit:
+    cover;
+
+  background:
+    #050b0f;
+}
+
+
+.camera-placeholder {
+  position:
+    absolute;
+
+  inset:
+    0;
+
+  z-index:
+    2;
+
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  gap:
+    6px;
+
+  padding:
+    16px;
+
   color:
-    var(--text);
+    rgba(255, 255, 255, 0.70);
+
+  text-align:
+    center;
+
+  background:
+    radial-gradient(
+      circle at center,
+      #15242d,
+      #050b0f
+    );
+}
+
+
+.camera-placeholder-icon {
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  width:
+    48px;
+
+  height:
+    48px;
+
+  border:
+    2px solid
+    rgba(255, 255, 255, 0.54);
+
+  border-radius:
+    14px;
+
+  font-size:
+    27px;
+}
+
+
+.camera-placeholder strong {
+  color:
+    #ffffff;
 
   font-size:
     13px;
-
-  font-weight:
-    850;
-
-  line-height:
-    1.25;
 }
 
 
-.card-heading p {
-  margin:
-    2px 0 0;
+.camera-placeholder span {
+  max-width:
+    220px;
+
+  font-size:
+    9px;
+
+  line-height:
+    1.4;
+}
+
+
+.blur-overlay {
+  position:
+    absolute;
+
+  inset:
+    0;
+
+  z-index:
+    4;
+
+  pointer-events:
+    none;
+}
+
+
+/************************************************************
+ * Camera Status
+ ************************************************************/
+
+.camera-status {
+  position:
+    absolute;
+
+  top:
+    7px;
+
+  left:
+    50%;
+
+  z-index:
+    15;
+
+  max-width:
+    calc(
+      100% -
+      14px
+    );
+
+  padding:
+    5px 8px;
+
+  overflow:
+    hidden;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.22);
+
+  border-radius:
+    999px;
 
   color:
-    var(--muted);
+    #ffffff;
+
+  background:
+    rgba(0, 0, 0, 0.60);
 
   font-size:
     8px;
 
+  font-weight:
+    750;
+
   line-height:
-    1.3;
+    1.25;
+
+  text-align:
+    center;
+
+  text-overflow:
+    ellipsis;
+
+  white-space:
+    nowrap;
+
+  transform:
+    translateX(-50%);
+
+  backdrop-filter:
+    blur(7px);
+
+  pointer-events:
+    none;
 }
 
 
-.step-badge {
+.camera-status.success {
+  background:
+    rgba(9, 118, 62, 0.90);
+}
+
+
+.camera-status.error {
+  background:
+    rgba(185, 14, 14, 0.94);
+}
+
+
+.camera-status.loading {
+  background:
+    rgba(135, 99, 0, 0.92);
+}
+
+
+.camera-status.info {
+  background:
+    rgba(9, 64, 96, 0.92);
+}
+
+
+/************************************************************
+ * Camera Toolbar
+ ************************************************************/
+
+.camera-toolbar {
+  position:
+    absolute;
+
+  right:
+    5px;
+
+  bottom:
+    6px;
+
+  left:
+    5px;
+
+  z-index:
+    16;
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  flex-wrap:
+    nowrap;
+
+  gap:
+    4px;
+
+  min-width:
+    0;
+
+  padding:
+    5px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.15);
+
+  border-radius:
+    12px;
+
+  background:
+    rgba(0, 0, 0, 0.48);
+
+  backdrop-filter:
+    blur(8px);
+}
+
+
+.camera-button {
+  flex:
+    0 1 auto;
+
+  min-width:
+    0;
+
+  min-height:
+    29px;
+
+  padding:
+    4px 6px;
+
+  overflow:
+    hidden;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.34);
+
+  border-radius:
+    8px;
+
+  color:
+    #ffffff;
+
+  background:
+    rgba(255, 255, 255, 0.12);
+
+  font-size:
+    7px;
+
+  font-weight:
+    800;
+
+  line-height:
+    1.1;
+
+  text-overflow:
+    ellipsis;
+
+  white-space:
+    nowrap;
+}
+
+
+.camera-button:not(:disabled):active {
+  transform:
+    scale(0.97);
+
+  background:
+    rgba(255, 255, 255, 0.25);
+}
+
+
+.capture-button {
   display:
     grid;
 
@@ -794,60 +1308,562 @@ fieldset {
     center;
 
   flex:
-    0 0 27px;
+    0 0 50px;
 
   width:
-    27px;
+    50px;
 
   height:
-    27px;
+    50px;
+
+  padding:
+    4px;
+
+  border:
+    3px solid
+    #ffffff;
 
   border-radius:
+    50%;
+
+  background:
+    rgba(0, 0, 0, 0.18);
+}
+
+
+.capture-button span {
+  display:
+    block;
+
+  width:
+    35px;
+
+  height:
+    35px;
+
+  border-radius:
+    50%;
+
+  background:
+    #ffffff;
+}
+
+
+.capture-button:not(:disabled):active span {
+  transform:
+    scale(0.90);
+}
+
+
+.file-input-hidden {
+  position:
+    absolute;
+
+  width:
+    1px;
+
+  height:
+    1px;
+
+  overflow:
+    hidden;
+
+  opacity:
+    0;
+
+  pointer-events:
+    none;
+}
+
+
+/************************************************************
+ * Vertical Gauge
+ *
+ * app.js เดิมกำหนด:
+ * - gaugeMask.style.width
+ * - gaugeIndicator.style.left
+ *
+ * จึงหมุน Track -90 องศา
+ * เพื่อให้การเคลื่อนที่แนวนอนกลายเป็นแนวตั้ง
+ ************************************************************/
+
+.gauge-panel {
+  position:
+    relative;
+
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  align-items:
+    center;
+
+  width:
+    var(--gauge-width);
+
+  min-width:
+    var(--gauge-width);
+
+  height:
+    100%;
+
+  padding:
+    4px 0;
+
+  border-left:
+    1px solid
+    #263a44;
+
+  background:
+    linear-gradient(
+      180deg,
+      #e8eef1,
+      #f7fafb
+    );
+
+  isolation:
+    isolate;
+}
+
+
+/*
+ * กล่องแสดงค่าจะลอยเข้าไปในมุมขวาของกล้อง
+ * เพื่อไม่เพิ่มความกว้างให้ Gauge
+ */
+.gauge-value {
+  position:
+    absolute;
+
+  top:
+    8px;
+
+  right:
+    calc(
+      100% +
+      5px
+    );
+
+  z-index:
+    20;
+
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  width:
+    82px;
+
+  min-height:
+    29px;
+
+  padding:
+    4px 5px;
+
+  overflow:
+    hidden;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.58);
+
+  border-radius:
+    8px;
+
+  color:
+    #ffffff;
+
+  background:
+    rgba(16, 132, 78, 0.92);
+
+  box-shadow:
+    0 3px 12px
+    rgba(0, 0, 0, 0.25);
+
+  font-size:
     9px;
 
+  font-weight:
+    900;
+
+  line-height:
+    1.1;
+
+  text-align:
+    center;
+
+  text-overflow:
+    ellipsis;
+
+  white-space:
+    nowrap;
+
+  backdrop-filter:
+    blur(6px);
+
+  pointer-events:
+    none;
+}
+
+
+.gauge-panel.level-warning
+.gauge-value {
+  color:
+    #392f00;
+
+  background:
+    rgba(255, 211, 0, 0.95);
+}
+
+
+.gauge-panel.level-orange
+.gauge-value {
+  color:
+    #ffffff;
+
+  background:
+    rgba(237, 119, 0, 0.95);
+}
+
+
+.gauge-panel.level-danger
+.gauge-value {
+  color:
+    #ffffff;
+
+  background:
+    rgba(214, 41, 41, 0.96);
+}
+
+
+.gauge-panel.level-critical
+.gauge-value,
+.gauge-panel.is-denied
+.gauge-value {
   color:
     #ffffff;
 
   background:
     linear-gradient(
       135deg,
-      var(--primary),
-      #176d98
-    );
-
-  font-size:
-    12px;
-
-  font-weight:
-    900;
-
-  box-shadow:
-    0 3px 9px
-    rgba(
-      18,
-      63,
-      91,
-      0.20
+      #a50000,
+      #f00000
     );
 }
 
 
+.gauge-scale {
+  position:
+    relative;
+
+  flex:
+    1 1 auto;
+
+  width:
+    100%;
+
+  min-height:
+    0;
+
+  margin:
+    42px 0 23px;
+}
+
+
+/*
+ * Track จริงยังเป็นแนวนอน
+ * แต่ถูกหมุนให้แสดงเป็นแนวตั้ง
+ */
+.gauge-track {
+  position:
+    absolute;
+
+  top:
+    50%;
+
+  left:
+    50%;
+
+  width:
+    calc(
+      var(--camera-height) -
+      92px
+    );
+
+  height:
+    11px;
+
+  overflow:
+    hidden;
+
+  border:
+    1px solid
+    #26343c;
+
+  border-radius:
+    999px;
+
+  background:
+    #dfe7ea;
+
+  box-shadow:
+    0 0 0 1px
+    rgba(255, 255, 255, 0.55);
+
+  transform:
+    translate(
+      -50%,
+      -50%
+    )
+    rotate(-90deg);
+
+  transform-origin:
+    center;
+}
+
+
+.gauge-gradient {
+  position:
+    absolute;
+
+  inset:
+    0;
+
+  background:
+    linear-gradient(
+      to right,
+      #119d55 0%,
+      #4ebd50 2%,
+      #f0dc1a 20%,
+      #ed8715 50%,
+      #df3327 80%,
+      #ff0000 100%
+    );
+}
+
+
+/*
+ * app.js จะปรับ width ของ element นี้
+ */
+.gauge-mask {
+  position:
+    absolute;
+
+  top:
+    0;
+
+  right:
+    0;
+
+  bottom:
+    0;
+
+  width:
+    100%;
+
+  height:
+    100%;
+
+  background:
+    rgba(232, 239, 242, 0.92);
+
+  transition:
+    width 180ms ease;
+}
+
+
+/*
+ * app.js จะปรับ left ของ element นี้
+ */
+.gauge-indicator {
+  position:
+    absolute;
+
+  top:
+    50%;
+
+  left:
+    0%;
+
+  width:
+    3px;
+
+  height:
+    19px;
+
+  border-radius:
+    4px;
+
+  background:
+    #050505;
+
+  box-shadow:
+    0 0 0 2px
+    #ffffff;
+
+  transform:
+    translate(
+      -50%,
+      -50%
+    );
+
+  transition:
+    left 180ms ease;
+}
+
+
 /************************************************************
- * Fields
+ * Gauge Scale Numbers
  ************************************************************/
 
-.person-form-grid,
-.inspection-control-grid {
+.scale-number {
+  position:
+    absolute;
+
+  right:
+    1px;
+
+  z-index:
+    3;
+
+  color:
+    #253741;
+
+  font-size:
+    6px;
+
+  font-weight:
+    900;
+
+  line-height:
+    1;
+
+  text-align:
+    right;
+
+  pointer-events:
+    none;
+}
+
+
+.scale-50 {
+  top:
+    1px;
+}
+
+
+.scale-25 {
+  top:
+    50%;
+
+  transform:
+    translateY(-50%);
+}
+
+
+.scale-10 {
+  top:
+    80%;
+
+  transform:
+    translateY(-50%);
+}
+
+
+.scale-1 {
+  bottom:
+    9px;
+}
+
+
+.scale-0 {
+  bottom:
+    0;
+}
+
+
+.gauge-unit {
+  position:
+    absolute;
+
+  right:
+    1px;
+
+  bottom:
+    5px;
+
+  color:
+    #52656f;
+
+  font-size:
+    6px;
+
+  font-weight:
+    900;
+
+  line-height:
+    1;
+
+  writing-mode:
+    vertical-rl;
+
+  transform:
+    rotate(180deg);
+}
+
+
+@supports selector(.camera-monitor:has(.is-denied)) {
+
+  .camera-monitor:has(
+    .gauge-panel.is-denied
+  ) {
+    border-color:
+      #d10000;
+
+    box-shadow:
+      0 0 0 2px
+      rgba(220, 0, 0, 0.20),
+      var(--shadow);
+  }
+
+}
+
+
+/************************************************************
+ * Inspection Form Card
+ ************************************************************/
+
+.form-card,
+.round-card {
+  padding:
+    8px;
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius:
+    12px;
+
+  background:
+    var(--surface);
+
+  box-shadow:
+    var(--shadow);
+}
+
+
+.form-grid {
   display:
     grid;
 
   grid-template-columns:
     repeat(
       2,
-      minmax(
-        0,
-        1fr
-      )
+      minmax(0, 1fr)
     );
 
   gap:
@@ -870,19 +1886,10 @@ fieldset {
 }
 
 
-.field-span-full {
-  grid-column:
-    1 / -1;
-}
-
-
 .field-group label,
 .field-group legend {
-  margin:
-    0;
-
   color:
-    var(--text-soft);
+    #354a56;
 
   font-size:
     9px;
@@ -895,4 +1902,1560 @@ fieldset {
 }
 
 
+.field-group select,
+.field-group input {
+  width:
+    100%;
+
+  min-width:
+    0;
+
+  min-height:
+    40px;
+
+  padding:
+    7px 8px;
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius:
+    9px;
+
+  outline:
+    none;
+
+  color:
+    var(--text);
+
+  background:
+    #ffffff;
+
+  font-size:
+    12px;
+}
+
+
+.field-group select:focus,
+.field-group input:focus {
+  border-color:
+    #4397c2;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(67, 151, 194, 0.13);
+}
+
+
+/************************************************************
+ * Checkpoint
+ ************************************************************/
+
+.checkpoint-group {
+  margin:
+    0;
+
+  padding:
+    0;
+
+  border:
+    0;
+}
+
+
+.segmented-control {
+  display:
+    grid;
+
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+
+  overflow:
+    hidden;
+
+  min-height:
+    40px;
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius:
+    9px;
+}
+
+
+.segmented-control label {
+  position:
+    relative;
+
+  display:
+    block;
+}
+
+
+.segmented-control input {
+  position:
+    absolute;
+
+  opacity:
+    0;
+
+  pointer-events:
+    none;
+}
+
+
+.segmented-control span {
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  height:
+    100%;
+
+  min-height:
+    40px;
+
+  padding:
+    7px 3px;
+
+  color:
+    var(--muted);
+
+  background:
+    var(--surface-soft);
+
+  font-size:
+    9px;
+
+  font-weight:
+    800;
+}
+
+
+.segmented-control
+label + label span {
+  border-left:
+    1px solid
+    var(--border);
+}
+
+
+.segmented-control
+input:checked + span {
+  color:
+    #ffffff;
+
+  background:
+    var(--primary);
+}
+
+
+/************************************************************
+ * Measurement
+ ************************************************************/
+
+.measurement-group {
+  grid-column:
+    1 / -1;
+}
+
+
+.measurement-input-wrap {
+  display:
+    flex;
+
+  align-items:
+    stretch;
+
+  overflow:
+    hidden;
+
+  min-height:
+    49px;
+
+  border:
+    2px solid
+    var(--primary);
+
+  border-radius:
+    10px;
+
+  background:
+    #ffffff;
+}
+
+
+.measurement-input-wrap input {
+  flex:
+    1 1 auto;
+
+  min-width:
+    0;
+
+  min-height:
+    47px;
+
+  padding:
+    5px 8px;
+
+  border:
+    0;
+
+  border-radius:
+    0;
+
+  font-size:
+    23px;
+
+  font-weight:
+    900;
+
+  line-height:
+    1;
+
+  text-align:
+    center;
+
+  box-shadow:
+    none;
+}
+
+
+.measurement-input-wrap span {
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  flex:
+    0 0 53px;
+
+  min-width:
+    53px;
+
+  padding:
+    6px;
+
+  color:
+    #ffffff;
+
+  background:
+    var(--primary);
+
+  font-size:
+    11px;
+
+  font-weight:
+    900;
+}
+
+
+.required-note {
+  margin-left:
+    3px;
+
+  color:
+    #c00000;
+
+  font-size:
+    8px;
+
+  font-weight:
+    800;
+}
+
+
+.measurement-rule {
+  display:
+    block;
+
+  margin-top:
+    2px;
+
+  color:
+    #aa0019;
+
+  font-size:
+    8px;
+
+  font-weight:
+    700;
+
+  line-height:
+    1.35;
+}
+
+
+/************************************************************
+ * Selected Capture
+ ************************************************************/
+
+.selected-capture-panel {
+  display:
+    grid;
+
+  grid-template-columns:
+    68px
+    minmax(0, 1fr)
+    auto;
+
+  align-items:
+    center;
+
+  gap:
+    7px;
+
+  padding:
+    7px;
+
+  border:
+    1px solid
+    #b6d8c3;
+
+  border-radius:
+    11px;
+
+  background:
+    #f0faf4;
+
+  box-shadow:
+    var(--shadow);
+}
+
+
+.selected-capture-image-wrap {
+  overflow:
+    hidden;
+
+  width:
+    68px;
+
+  height:
+    54px;
+
+  border-radius:
+    8px;
+
+  background:
+    #101820;
+}
+
+
+.selected-capture-image-wrap img {
+  display:
+    block;
+
+  width:
+    100%;
+
+  height:
+    100%;
+
+  object-fit:
+    cover;
+}
+
+
+.selected-capture-content {
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  gap:
+    2px;
+
+  min-width:
+    0;
+}
+
+
+.selected-capture-content strong {
+  color:
+    #11623a;
+
+  font-size:
+    10px;
+}
+
+
+.selected-capture-content span {
+  overflow:
+    hidden;
+
+  color:
+    var(--text);
+
+  font-size:
+    8px;
+
+  font-weight:
+    750;
+
+  text-overflow:
+    ellipsis;
+
+  white-space:
+    nowrap;
+}
+
+
+.selected-capture-content small {
+  overflow:
+    hidden;
+
+  color:
+    var(--muted);
+
+  font-size:
+    7px;
+
+  text-overflow:
+    ellipsis;
+
+  white-space:
+    nowrap;
+}
+
+
+.remove-capture-button {
+  min-height:
+    31px;
+
+  padding:
+    5px 7px;
+
+  border:
+    1px solid
+    #dc9d9d;
+
+  border-radius:
+    8px;
+
+  color:
+    #b00020;
+
+  background:
+    #ffffff;
+
+  font-size:
+    8px;
+
+  font-weight:
+    800;
+}
+
+
+/************************************************************
+ * Round List
+ ************************************************************/
+
+.section-heading {
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    space-between;
+
+  gap:
+    7px;
+
+  margin-bottom:
+    7px;
+}
+
+
+.section-heading > div {
+  min-width:
+    0;
+}
+
+
+.section-heading h2 {
+  margin:
+    0;
+
+  font-size:
+    12px;
+
+  font-weight:
+    850;
+}
+
+
+.section-heading p {
+  margin:
+    2px 0 0;
+
+  color:
+    var(--muted);
+
+  font-size:
+    7px;
+
+  line-height:
+    1.3;
+}
+
+
+.outline-button {
+  flex:
+    0 0 auto;
+
+  min-height:
+    33px;
+
+  padding:
+    6px 8px;
+
+  border:
+    1px solid
+    var(--primary);
+
+  border-radius:
+    9px;
+
+  color:
+    var(--primary);
+
+  background:
+    #ffffff;
+
+  font-size:
+    8px;
+
+  font-weight:
+    850;
+}
+
+
+.rounds-list {
+  display:
+    grid;
+
+  gap:
+    6px;
+}
+
+
+.round-item {
+  width:
+    100%;
+
+  min-width:
+    0;
+
+  box-shadow:
+    0 3px 10px
+    rgba(15, 55, 77, 0.06);
+}
+
+
+.empty-state {
+  padding:
+    15px 8px;
+
+  border:
+    1px dashed
+    #b8c8cf;
+
+  border-radius:
+    9px;
+
+  color:
+    var(--muted);
+
+  background:
+    var(--surface-soft);
+
+  font-size:
+    9px;
+
+  text-align:
+    center;
+}
+
+
+/************************************************************
+ * Action Bar
+ ************************************************************/
+
+.action-bar {
+  position:
+    sticky;
+
+  bottom:
+    0;
+
+  z-index:
+    80;
+
+  display:
+    grid;
+
+  grid-template-columns:
+    minmax(0, 0.82fr)
+    minmax(0, 1.18fr);
+
+  gap:
+    7px;
+
+  padding:
+    7px
+    7px
+    calc(
+      7px +
+      var(--safe-bottom)
+    );
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius:
+    12px 12px 0 0;
+
+  background:
+    rgba(255, 255, 255, 0.96);
+
+  box-shadow:
+    0 -5px 18px
+    rgba(18, 63, 91, 0.11);
+
+  backdrop-filter:
+    blur(10px);
+}
+
+
+.primary-action,
+.secondary-action {
+  min-height:
+    45px;
+
+  border-radius:
+    10px;
+
+  font-size:
+    11px;
+
+  font-weight:
+    900;
+}
+
+
+.primary-action {
+  border:
+    0;
+
+  color:
+    #ffffff;
+
+  background:
+    linear-gradient(
+      135deg,
+      #0f587f,
+      #123f5b
+    );
+}
+
+
+.primary-action:not(:disabled):active {
+  transform:
+    scale(0.985);
+}
+
+
+.secondary-action {
+  border:
+    1px solid
+    var(--border);
+
+  color:
+    var(--primary);
+
+  background:
+    #ffffff;
+}
+
+
+/************************************************************
+ * Capture Preview Modal
+ ************************************************************/
+
+body.modal-open {
+  overflow:
+    hidden;
+}
+
+
+.capture-preview-modal {
+  position:
+    fixed;
+
+  inset:
+    0;
+
+  z-index:
+    9999;
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  padding:
+    max(
+      7px,
+      var(--safe-top)
+    )
+    7px
+    max(
+      7px,
+      var(--safe-bottom)
+    );
+
+  background:
+    rgba(0, 0, 0, 0.86);
+
+  backdrop-filter:
+    blur(5px);
+}
+
+
+.capture-preview-card {
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  overflow:
+    hidden;
+
+  width:
+    min(
+      100%,
+      620px
+    );
+
+  max-height:
+    calc(
+      100dvh -
+      var(--safe-top) -
+      var(--safe-bottom) -
+      14px
+    );
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.18);
+
+  border-radius:
+    14px;
+
+  background:
+    #ffffff;
+
+  box-shadow:
+    var(--shadow-strong);
+}
+
+
+.capture-preview-header {
+  padding:
+    9px 10px;
+
+  border-bottom:
+    1px solid
+    var(--border);
+}
+
+
+.capture-preview-header h2 {
+  margin:
+    0;
+
+  color:
+    var(--primary);
+
+  font-size:
+    13px;
+}
+
+
+.capture-preview-header p {
+  margin:
+    2px 0 0;
+
+  color:
+    var(--muted);
+
+  font-size:
+    8px;
+}
+
+
+.capture-preview-body {
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  overflow:
+    hidden;
+
+  flex:
+    1 1 auto;
+
+  min-height:
+    220px;
+
+  max-height:
+    68dvh;
+
+  padding:
+    5px;
+
+  background:
+    #050a0e;
+}
+
+
+.capture-preview-body img {
+  display:
+    block;
+
+  width:
+    auto;
+
+  height:
+    auto;
+
+  max-width:
+    100%;
+
+  max-height:
+    66dvh;
+
+  object-fit:
+    contain;
+}
+
+
+.capture-preview-meta {
+  padding:
+    5px 9px;
+
+  color:
+    var(--muted);
+
+  background:
+    var(--surface-soft);
+
+  font-size:
+    8px;
+
+  font-weight:
+    750;
+
+  text-align:
+    center;
+}
+
+
+.capture-preview-actions {
+  display:
+    grid;
+
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+
+  gap:
+    7px;
+
+  padding:
+    8px;
+}
+
+
+.preview-secondary-button,
+.preview-primary-button {
+  min-height:
+    43px;
+
+  border-radius:
+    10px;
+
+  font-size:
+    10px;
+
+  font-weight:
+    850;
+}
+
+
+.preview-secondary-button {
+  border:
+    1px solid
+    var(--border);
+
+  color:
+    var(--primary);
+
+  background:
+    #ffffff;
+}
+
+
+.preview-primary-button {
+  border:
+    0;
+
+  color:
+    #ffffff;
+
+  background:
+    linear-gradient(
+      135deg,
+      #168451,
+      #0b653b
+    );
+}
+
+
+/************************************************************
+ * Small Mobile
+ ************************************************************/
+
+@media (
+  max-width: 360px
+) {
+
+  :root {
+    --gauge-width:
+      33px;
+
+    --camera-height:
+      clamp(
+        320px,
+        49svh,
+        450px
+      );
+  }
+
+
+  .topbar {
+    padding-right:
+      6px;
+
+    padding-left:
+      6px;
+  }
+
+
+  .app-icon {
+    flex-basis:
+      31px;
+
+    width:
+      31px;
+
+    height:
+      31px;
+
+    font-size:
+      16px;
+  }
+
+
+  .topbar h1 {
+    font-size:
+      12px;
+  }
+
+
+  .topbar p {
+    font-size:
+      7px;
+  }
+
+
+  .person-panel {
+    gap:
+      5px;
+
+    padding:
+      6px;
+  }
+
+
+  .compact-field input,
+  .compact-field select {
+    min-height:
+      37px;
+
+    padding:
+      6px;
+
+    font-size:
+      10px;
+  }
+
+
+  .camera-toolbar {
+    right:
+      3px;
+
+    left:
+      3px;
+
+    gap:
+      3px;
+
+    padding:
+      4px;
+  }
+
+
+  .camera-button {
+    min-height:
+      27px;
+
+    padding:
+      3px 4px;
+
+    font-size:
+      6px;
+  }
+
+
+  .capture-button {
+    flex-basis:
+      45px;
+
+    width:
+      45px;
+
+    height:
+      45px;
+  }
+
+
+  .capture-button span {
+    width:
+      31px;
+
+    height:
+      31px;
+  }
+
+
+  .gauge-value {
+    right:
+      calc(
+        100% +
+        4px
+      );
+
+    width:
+      74px;
+
+    font-size:
+      8px;
+  }
+
+
+  .gauge-track {
+    width:
+      calc(
+        var(--camera-height) -
+        88px
+      );
+  }
+
+
+  .form-card,
+  .round-card {
+    padding:
+      7px;
+  }
+
+
+  .field-group select,
+  .field-group input {
+    min-height:
+      38px;
+
+    padding:
+      6px;
+
+    font-size:
+      10px;
+  }
+
+
+  .measurement-input-wrap input {
+    font-size:
+      21px;
+  }
+
+
+  .selected-capture-panel {
+    grid-template-columns:
+      58px
+      minmax(0, 1fr)
+      auto;
+
+    gap:
+      5px;
+
+    padding:
+      6px;
+  }
+
+
+  .selected-capture-image-wrap {
+    width:
+      58px;
+
+    height:
+      48px;
+  }
+
+}
+
+
+/************************************************************
+ * Tablet / Desktop
+ ************************************************************/
+
+@media (
+  min-width: 760px
+) {
+
+  :root {
+    --gauge-width:
+      44px;
+
+    --camera-height:
+      clamp(
+        500px,
+        70vh,
+        700px
+      );
+  }
+
+
+  .topbar {
+    min-height:
+      63px;
+
+    padding:
+      calc(
+        8px +
+        var(--safe-top)
+      )
+      13px
+      8px;
+  }
+
+
+  .topbar h1 {
+    font-size:
+      16px;
+  }
+
+
+  .topbar p {
+    font-size:
+      10px;
+  }
+
+
+  .datetime {
+    font-size:
+      10px;
+  }
+
+
+  .connection-badge {
+    font-size:
+      8px;
+  }
+
+
+  .main-content {
+    padding:
+      11px;
+  }
+
+
+  #inspectionForm {
+    gap:
+      9px;
+  }
+
+
+  .person-panel {
+    grid-template-columns:
+      repeat(
+        4,
+        minmax(0, 1fr)
+      );
+
+    gap:
+      10px;
+
+    padding:
+      11px;
+  }
+
+
+  .compact-field-wide {
+    grid-column:
+      span 2;
+  }
+
+
+  .compact-field label {
+    font-size:
+      10px;
+  }
+
+
+  .compact-field input,
+  .compact-field select {
+    min-height:
+      42px;
+
+    font-size:
+      12px;
+  }
+
+
+  .camera-toolbar {
+    right:
+      10px;
+
+    bottom:
+      10px;
+
+    left:
+      10px;
+
+    gap:
+      7px;
+
+    padding:
+      7px;
+  }
+
+
+  .camera-button {
+    min-height:
+      34px;
+
+    padding:
+      6px 9px;
+
+    font-size:
+      9px;
+  }
+
+
+  .capture-button {
+    flex-basis:
+      57px;
+
+    width:
+      57px;
+
+    height:
+      57px;
+  }
+
+
+  .capture-button span {
+    width:
+      40px;
+
+    height:
+      40px;
+  }
+
+
+  .camera-status {
+    font-size:
+      10px;
+  }
+
+
+  .gauge-value {
+    top:
+      11px;
+
+    right:
+      calc(
+        100% +
+        8px
+      );
+
+    width:
+      102px;
+
+    min-height:
+      34px;
+
+    font-size:
+      11px;
+  }
+
+
+  .gauge-track {
+    width:
+      calc(
+        var(--camera-height) -
+        110px
+      );
+
+    height:
+      13px;
+  }
+
+
+  .scale-number {
+    font-size:
+      7px;
+  }
+
+
+  .form-card,
+  .round-card {
+    padding:
+      11px;
+  }
+
+
+  .form-grid {
+    grid-template-columns:
+      repeat(
+        3,
+        minmax(0, 1fr)
+      );
+
+    gap:
+      10px;
+  }
+
+
+  .measurement-group {
+    grid-column:
+      auto;
+  }
+
+
+  .field-group label,
+  .field-group legend {
+    font-size:
+      10px;
+  }
+
+
+  .selected-capture-panel {
+    grid-template-columns:
+      96px
+      minmax(0, 1fr)
+      auto;
+
+    padding:
+      9px;
+  }
+
+
+  .selected-capture-image-wrap {
+    width:
+      96px;
+
+    height:
+      70px;
+  }
+
+
+  .section-heading h2 {
+    font-size:
+      14px;
+  }
+
+
+  .section-heading p {
+    font-size:
+      9px;
+  }
+
+}
+
+
+/************************************************************
+ * Mobile Landscape
+ ************************************************************/
+
+@media (
+  max-width: 900px
+) and (
+  orientation: landscape
+) {
+
+  :root {
+    --gauge-width:
+      36px;
+
+    --camera-height:
+      clamp(
+        290px,
+        calc(
+          100dvh -
+          116px
+        ),
+        460px
+      );
+  }
+
+
+  .topbar {
+    min-height:
+      48px;
+
+    padding-top:
+      calc(
+        4px +
+        var(--safe-top)
+      );
+
+    padding-bottom:
+      4px;
+  }
+
+
+  .status-section {
+    min-height:
+      30px;
+  }
+
+
+  .main-content {
+    padding:
+      5px;
+  }
+
+
+  .person-panel {
+    grid-template-columns:
+      repeat(
+        4,
+        minmax(0, 1fr)
+      );
+
+    padding:
+      6px;
+  }
+
+
+  .compact-field-wide {
+    grid-column:
+      span 2;
+  }
+
+
+  .compact-field input,
+  .compact-field select {
+    min-height:
+      34px;
+
+    font-size:
+      10px;
+  }
+
+
+  .gauge-track {
+    width:
+      calc(
+        var(--camera-height) -
+        86px
+      );
+  }
+
+
+  .camera-toolbar {
+    bottom:
+      5px;
+  }
+
+
+  .form-grid {
+    grid-template-columns:
+      repeat(
+        3,
+        minmax(0, 1fr)
+      );
+  }
+
+
+  .measurement-group {
+    grid-column:
+      auto;
+  }
+
+}
+
+
+/************************************************************
+ * Reduced Motion
+ ************************************************************/
+
+@media (
+  prefers-reduced-motion:
+  reduce
+) {
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior:
+      auto !important;
+
+    animation-duration:
+      0.01ms !important;
+
+    animation-iteration-count:
+      1 !important;
+
+    transition-duration:
+      0.01ms !important;
+  }
+
+}
 
