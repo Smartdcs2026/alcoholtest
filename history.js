@@ -1,13 +1,13 @@
+
 /************************************************************
  * history.js
- * ระบบ Login + ปฏิทิน + ประวัติรายวัน + ดูภาพ
- * เวอร์ชันปรับ UI ใหม่แบบ self-contained
+ * ระบบ Login + ปฏิทิน + ประวัติแบบการ์ดรูปภาพ
+ * Mobile First / SweetAlert2 / Lazy Thumbnail
  *
- * จุดสำคัญ:
- * - Inject CSS จากไฟล์นี้โดยตรง ป้องกัน CSS ไม่ถูกโหลด
- * - ใช้ SweetAlert2 เป็นกรอบ Modal
- * - แยกชื่อ Class ด้วย ahx- ป้องกันชนกับ CSS ระบบหลัก
- * - รองรับมือถือและคอมพิวเตอร์
+ * ต้องโหลดหลัง:
+ * - SweetAlert2
+ * - config.js
+ * - api.js
  ************************************************************/
 
 (function (window, document) {
@@ -17,15 +17,17 @@
   const CONFIG = window.APP_CONFIG || {};
 
   const SESSION_KEY =
-    'alcohol_history_session_v2';
+    'alcohol_history_session_v3';
 
   const LAST_MONTH_KEY =
-    'alcohol_history_last_month_v2';
+    'alcohol_history_last_month_v3';
 
   const STYLE_ID =
-    'alcoholHistoryV2Styles';
+    'alcoholHistoryV3Styles';
 
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 10;
+  const SEARCH_DELAY_MS = 450;
+  const THUMBNAIL_CACHE_LIMIT = 30;
 
   const AUTH_CODES = [
     'AUTH_REQUIRED',
@@ -50,21 +52,64 @@
   ];
 
   const state = {
-    initialized: false,
-    opening: false,
+    initialized:
+      false,
 
-    token: '',
-    name: '',
-    expiresAtIso: '',
+    opening:
+      false,
 
-    currentMonth: '',
-    currentDate: '',
-    currentPage: 1,
+    token:
+      '',
 
-    monthData: null,
-    imageDataUrl: '',
+    name:
+      '',
 
-    cameraWasReady: false
+    expiresAtIso:
+      '',
+
+    currentMonth:
+      '',
+
+    currentDate:
+      '',
+
+    currentPage:
+      1,
+
+    monthData:
+      null,
+
+    dayData:
+      null,
+
+    filters: {
+      search:
+        '',
+
+      status:
+        'ALL',
+
+      checkpoint:
+        '',
+
+      image:
+        'ALL'
+    },
+
+    searchTimer:
+      0,
+
+    dayLoadSequence:
+      0,
+
+    thumbnailObserver:
+      null,
+
+    thumbnailCache:
+      new Map(),
+
+    cameraWasReady:
+      false
   };
 
 
@@ -84,17 +129,35 @@
 
   function escapeHtml(value) {
     return cleanText(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+      .replace(
+        /&/g,
+        '&amp;'
+      )
+      .replace(
+        /</g,
+        '&lt;'
+      )
+      .replace(
+        />/g,
+        '&gt;'
+      )
+      .replace(
+        /"/g,
+        '&quot;'
+      )
+      .replace(
+        /'/g,
+        '&#039;'
+      );
   }
 
 
   function escapeAttribute(value) {
     return escapeHtml(value)
-      .replace(/`/g, '&#096;');
+      .replace(
+        /`/g,
+        '&#096;'
+      );
   }
 
 
@@ -116,6 +179,12 @@
       value,
       0
     ).toFixed(2);
+  }
+
+
+  function getElement(id) {
+    return document
+      .getElementById(id);
   }
 
 
@@ -161,9 +230,16 @@
   }
 
 
-  function getElement(id) {
-    return document
-      .getElementById(id);
+  function debounceSearch(callback) {
+    window.clearTimeout(
+      state.searchTimer
+    );
+
+    state.searchTimer =
+      window.setTimeout(
+        callback,
+        SEARCH_DELAY_MS
+      );
   }
 
 
@@ -172,25 +248,22 @@
    ************************************************************/
 
   function currentBangkokMonth() {
-    const formatter =
-      new Intl.DateTimeFormat(
-        'en-CA',
-        {
-          timeZone:
-            CONFIG.TIMEZONE ||
-            'Asia/Bangkok',
-
-          year:
-            'numeric',
-
-          month:
-            '2-digit'
-        }
-      );
-
     const parts = {};
 
-    formatter
+    new Intl.DateTimeFormat(
+      'en-CA',
+      {
+        timeZone:
+          CONFIG.TIMEZONE ||
+          'Asia/Bangkok',
+
+        year:
+          'numeric',
+
+        month:
+          '2-digit'
+      }
+    )
       .formatToParts(
         new Date()
       )
@@ -217,9 +290,7 @@
     const match =
       /^(\d{4})-(\d{2})$/
         .exec(
-          cleanText(
-            monthKey
-          )
+          cleanText(monthKey)
         );
 
     if (!match) {
@@ -256,9 +327,7 @@
     amount
   ) {
     const parsed =
-      parseMonthKey(
-        monthKey
-      ) ||
+      parseMonthKey(monthKey) ||
       parseMonthKey(
         currentBangkokMonth()
       );
@@ -267,11 +336,13 @@
       new Date(
         Date.UTC(
           parsed.year,
+
           parsed.month -
           1 +
           Number(
             amount || 0
           ),
+
           1
         )
       );
@@ -290,21 +361,18 @@
   }
 
 
-  function monthTitle(
-    monthKey
-  ) {
+  function monthTitle(monthKey) {
     const parsed =
-      parseMonthKey(
-        monthKey
-      );
+      parseMonthKey(monthKey);
 
     if (!parsed) {
-      return monthKey;
+      return cleanText(monthKey);
     }
 
     return (
       THAI_MONTHS[
-        parsed.month - 1
+        parsed.month -
+        1
       ] +
       ' ' +
       parsed.year
@@ -474,9 +542,7 @@
         return false;
       }
 
-      if (
-        state.expiresAtIso
-      ) {
+      if (state.expiresAtIso) {
         const expiresAt =
           new Date(
             state.expiresAtIso
@@ -506,9 +572,14 @@
 
 
   function clearSession() {
-    state.token = '';
-    state.name = '';
-    state.expiresAtIso = '';
+    state.token =
+      '';
+
+    state.name =
+      '';
+
+    state.expiresAtIso =
+      '';
 
     try {
       window.sessionStorage
@@ -557,10 +628,19 @@
 
 
   /************************************************************
-   * CSS Injection
+   * CSS
    ************************************************************/
 
   function injectStyles() {
+    const oldStyle =
+      getElement(
+        'alcoholHistoryV2Styles'
+      );
+
+    if (oldStyle) {
+      oldStyle.remove();
+    }
+
     if (
       getElement(
         STYLE_ID
@@ -580,20 +660,18 @@
     style.textContent = `
       :root {
         --ahx-primary: #0e3b55;
-        --ahx-primary-2: #176589;
+        --ahx-primary2: #176589;
         --ahx-bg: #eef3f6;
-        --ahx-surface: #ffffff;
-        --ahx-text: #18313e;
+        --ahx-text: #17313d;
         --ahx-muted: #6c7f89;
         --ahx-border: #d4e0e6;
-        --ahx-success: #138455;
-        --ahx-danger: #d62e2e;
-        --ahx-warning: #d99500;
+        --ahx-success: #148255;
+        --ahx-danger: #d52f2f;
+        --ahx-warning: #d79000;
         --ahx-shadow:
           0 22px 70px
           rgba(5, 29, 43, .34);
       }
-
 
       #historyAccessButton.ahx-history-button {
         display:
@@ -616,12 +694,8 @@
 
         border:
           1px solid
-          rgba(
-            255,
-            255,
-            255,
-            .34
-          ) !important;
+          rgba(255, 255, 255, .34)
+          !important;
 
         border-radius:
           999px !important;
@@ -630,12 +704,8 @@
           #ffffff !important;
 
         background:
-          rgba(
-            255,
-            255,
-            255,
-            .13
-          ) !important;
+          rgba(255, 255, 255, .13)
+          !important;
 
         font-size:
           8px !important;
@@ -653,26 +723,19 @@
           none !important;
       }
 
-
       #historyAccessButton.ahx-history-button:active {
         transform:
           scale(.96);
 
         background:
-          rgba(
-            255,
-            255,
-            255,
-            .25
-          ) !important;
+          rgba(255, 255, 255, .25)
+          !important;
       }
-
 
       #historyAccessButton.ahx-history-button:disabled {
         opacity:
           .55 !important;
       }
-
 
       .ahx-login-popup,
       .ahx-main-popup {
@@ -684,39 +747,42 @@
 
         border:
           1px solid
-          var(--ahx-border) !important;
+          var(--ahx-border)
+          !important;
 
         border-radius:
           18px !important;
 
         background:
-          var(--ahx-bg) !important;
+          var(--ahx-bg)
+          !important;
 
         box-shadow:
-          var(--ahx-shadow) !important;
+          var(--ahx-shadow)
+          !important;
       }
-
 
       .ahx-login-popup {
         width:
           min(
             92vw,
             430px
-          ) !important;
+          )
+          !important;
       }
-
 
       .ahx-main-popup {
         width:
           min(
-            94vw,
-            920px
-          ) !important;
+            95vw,
+            980px
+          )
+          !important;
 
         max-height:
-          94dvh !important;
+          95dvh
+          !important;
       }
-
 
       .ahx-login-html,
       .ahx-main-html {
@@ -727,16 +793,17 @@
           0 !important;
 
         color:
-          var(--ahx-text) !important;
+          var(--ahx-text)
+          !important;
 
         text-align:
           left !important;
       }
 
-
       .ahx-main-html {
         max-height:
-          94dvh !important;
+          95dvh
+          !important;
 
         overflow:
           auto !important;
@@ -744,7 +811,6 @@
         overscroll-behavior:
           contain;
       }
-
 
       .ahx-login-actions {
         gap:
@@ -754,9 +820,9 @@
           0 !important;
 
         padding:
-          0 22px 22px !important;
+          0 22px 22px
+          !important;
       }
-
 
       .ahx-confirm-button,
       .ahx-cancel-button {
@@ -770,7 +836,8 @@
           0 !important;
 
         padding:
-          8px 14px !important;
+          8px 14px
+          !important;
 
         border:
           0 !important;
@@ -785,7 +852,6 @@
           800 !important;
       }
 
-
       .ahx-confirm-button {
         color:
           #ffffff !important;
@@ -793,11 +859,11 @@
         background:
           linear-gradient(
             135deg,
-            var(--ahx-primary-2),
+            var(--ahx-primary2),
             var(--ahx-primary)
-          ) !important;
+          )
+          !important;
       }
-
 
       .ahx-cancel-button {
         color:
@@ -807,10 +873,10 @@
           #e6ecef !important;
       }
 
-
       .ahx-validation-message {
         margin:
-          0 22px 12px !important;
+          0 22px 12px
+          !important;
 
         border-radius:
           8px !important;
@@ -819,7 +885,6 @@
           12px !important;
       }
 
-
       .ahx-login-card {
         padding:
           24px 22px 14px;
@@ -827,7 +892,6 @@
         background:
           #ffffff;
       }
-
 
       .ahx-login-brand {
         display:
@@ -840,9 +904,8 @@
           12px;
 
         margin-bottom:
-          22px;
+          20px;
       }
-
 
       .ahx-login-icon {
         display:
@@ -869,7 +932,7 @@
         background:
           linear-gradient(
             145deg,
-            var(--ahx-primary-2),
+            var(--ahx-primary2),
             var(--ahx-primary)
           );
 
@@ -878,14 +941,8 @@
 
         box-shadow:
           0 10px 25px
-          rgba(
-            15,
-            83,
-            116,
-            .22
-          );
+          rgba(15, 83, 116, .22);
       }
-
 
       .ahx-login-brand h2 {
         margin:
@@ -901,7 +958,6 @@
           1.25;
       }
 
-
       .ahx-login-brand p {
         margin:
           4px 0 0;
@@ -911,11 +967,7 @@
 
         font-size:
           11px;
-
-        line-height:
-          1.4;
       }
-
 
       .ahx-field {
         display:
@@ -928,7 +980,6 @@
           13px;
       }
 
-
       .ahx-field label {
         color:
           #36515f;
@@ -939,7 +990,6 @@
         font-weight:
           800;
       }
-
 
       .ahx-field input {
         width:
@@ -980,21 +1030,14 @@
           none;
       }
 
-
       .ahx-field input:focus {
         border-color:
           #4c9ec3;
 
         box-shadow:
           0 0 0 3px
-          rgba(
-            76,
-            158,
-            195,
-            .14
-          );
+          rgba(76, 158, 195, .14);
       }
-
 
       .ahx-login-note {
         display:
@@ -1028,7 +1071,6 @@
           1.45;
       }
 
-
       .ahx-app {
         min-height:
           420px;
@@ -1036,7 +1078,6 @@
         background:
           var(--ahx-bg);
       }
-
 
       .ahx-topbar {
         position:
@@ -1046,7 +1087,7 @@
           0;
 
         z-index:
-          15;
+          30;
 
         display:
           flex;
@@ -1078,14 +1119,8 @@
 
         box-shadow:
           0 4px 15px
-          rgba(
-            5,
-            35,
-            52,
-            .22
-          );
+          rgba(5, 35, 52, .22);
       }
-
 
       .ahx-topbar-left,
       .ahx-topbar-title {
@@ -1102,12 +1137,10 @@
           0;
       }
 
-
       .ahx-topbar-title > div {
         min-width:
           0;
       }
-
 
       .ahx-topbar-logo {
         display:
@@ -1127,28 +1160,17 @@
 
         border:
           1px solid
-          rgba(
-            255,
-            255,
-            255,
-            .32
-          );
+          rgba(255, 255, 255, .32);
 
         border-radius:
           10px;
 
         background:
-          rgba(
-            255,
-            255,
-            255,
-            .10
-          );
+          rgba(255, 255, 255, .10);
 
         font-size:
           17px;
       }
-
 
       .ahx-topbar h2 {
         margin:
@@ -1170,7 +1192,6 @@
           nowrap;
       }
 
-
       .ahx-topbar p {
         margin:
           2px 0 0;
@@ -1179,12 +1200,7 @@
           hidden;
 
         color:
-          rgba(
-            255,
-            255,
-            255,
-            .72
-          );
+          rgba(255, 255, 255, .72);
 
         font-size:
           8px;
@@ -1195,7 +1211,6 @@
         white-space:
           nowrap;
       }
-
 
       .ahx-topbar-actions {
         display:
@@ -1211,9 +1226,9 @@
           0 0 auto;
       }
 
-
       .ahx-icon-button,
-      .ahx-text-button {
+      .ahx-text-button,
+      .ahx-back-button {
         display:
           inline-flex;
 
@@ -1228,12 +1243,7 @@
 
         border:
           1px solid
-          rgba(
-            255,
-            255,
-            255,
-            .28
-          );
+          rgba(255, 255, 255, .28);
 
         border-radius:
           8px;
@@ -1242,12 +1252,7 @@
           #ffffff;
 
         background:
-          rgba(
-            255,
-            255,
-            255,
-            .11
-          );
+          rgba(255, 255, 255, .11);
 
         font:
           inherit;
@@ -1258,7 +1263,6 @@
         font-weight:
           800;
       }
-
 
       .ahx-icon-button {
         width:
@@ -1271,34 +1275,22 @@
           18px;
       }
 
-
-      .ahx-text-button {
+      .ahx-text-button,
+      .ahx-back-button {
         padding:
           5px 9px;
       }
-
 
       .ahx-text-button.danger {
         color:
           #ffe3e3;
 
         border-color:
-          rgba(
-            255,
-            174,
-            174,
-            .42
-          );
+          rgba(255, 174, 174, .42);
 
         background:
-          rgba(
-            178,
-            15,
-            15,
-            .28
-          );
+          rgba(178, 15, 15, .28);
       }
-
 
       .ahx-month-panel {
         display:
@@ -1325,7 +1317,6 @@
         background:
           #ffffff;
       }
-
 
       .ahx-month-panel button {
         display:
@@ -1366,12 +1357,10 @@
           700;
       }
 
-
       .ahx-month-panel button:disabled {
         opacity:
           .45;
       }
-
 
       .ahx-month-title {
         min-width:
@@ -1380,7 +1369,6 @@
         text-align:
           center;
       }
-
 
       .ahx-month-title strong {
         display:
@@ -1391,11 +1379,7 @@
 
         font-size:
           15px;
-
-        line-height:
-          1.25;
       }
-
 
       .ahx-month-title small {
         display:
@@ -1420,7 +1404,6 @@
           nowrap;
       }
 
-
       .ahx-summary-grid {
         display:
           grid;
@@ -1438,6 +1421,13 @@
           8px;
       }
 
+      .ahx-summary-grid.compact {
+        grid-template-columns:
+          repeat(
+            4,
+            minmax(0, 1fr)
+          );
+      }
 
       .ahx-summary-card {
         display:
@@ -1456,7 +1446,7 @@
           0;
 
         min-height:
-          56px;
+          54px;
 
         padding:
           6px 4px;
@@ -1476,14 +1466,8 @@
 
         box-shadow:
           0 2px 8px
-          rgba(
-            16,
-            56,
-            80,
-            .05
-          );
+          rgba(16, 56, 80, .05);
       }
-
 
       .ahx-summary-card small {
         overflow:
@@ -1507,7 +1491,6 @@
         white-space:
           nowrap;
       }
-
 
       .ahx-summary-card strong {
         display:
@@ -1538,7 +1521,6 @@
           nowrap;
       }
 
-
       .ahx-summary-card.success {
         border-color:
           #b9dfcc;
@@ -1547,12 +1529,10 @@
           #f0fbf5;
       }
 
-
       .ahx-summary-card.success strong {
         color:
           var(--ahx-success);
       }
-
 
       .ahx-summary-card.danger {
         border-color:
@@ -1562,12 +1542,10 @@
           #fff1f1;
       }
 
-
       .ahx-summary-card.danger strong {
         color:
           var(--ahx-danger);
       }
-
 
       .ahx-summary-card.warning {
         border-color:
@@ -1577,12 +1555,10 @@
           #fff9e8;
       }
 
-
       .ahx-summary-card.warning strong {
         color:
           #916d00;
       }
-
 
       .ahx-calendar-wrap {
         margin:
@@ -1602,7 +1578,6 @@
           #ffffff;
       }
 
-
       .ahx-weekdays,
       .ahx-calendar-grid {
         display:
@@ -1615,7 +1590,6 @@
           );
       }
 
-
       .ahx-weekdays {
         border-bottom:
           1px solid
@@ -1624,7 +1598,6 @@
         background:
           #f3f7f9;
       }
-
 
       .ahx-weekdays span {
         padding:
@@ -1643,7 +1616,6 @@
           center;
       }
 
-
       .ahx-calendar-grid {
         gap:
           4px;
@@ -1652,12 +1624,11 @@
           6px;
       }
 
-
-      .ahx-calendar-empty {
+      .ahx-calendar-empty,
+      .ahx-calendar-day {
         min-height:
           58px;
       }
-
 
       .ahx-calendar-day {
         position:
@@ -1674,9 +1645,6 @@
 
         min-width:
           0;
-
-        min-height:
-          58px;
 
         padding:
           6px;
@@ -1704,12 +1672,10 @@
           left;
       }
 
-
       .ahx-calendar-day:disabled {
         opacity:
           .48;
       }
-
 
       .ahx-calendar-day.has-data {
         border-color:
@@ -1721,17 +1687,7 @@
             #e9f6fc,
             #ffffff
           );
-
-        box-shadow:
-          inset 0 0 0 1px
-          rgba(
-            65,
-            147,
-            187,
-            .06
-          );
       }
-
 
       .ahx-calendar-day.has-deny {
         border-color:
@@ -1744,7 +1700,6 @@
             #ffffff
           );
       }
-
 
       .ahx-calendar-day.images-deleted::after,
       .ahx-calendar-day.image-issue::after {
@@ -1767,18 +1722,15 @@
           "";
       }
 
-
       .ahx-calendar-day.images-deleted::after {
         background:
           #7f8b91;
       }
 
-
       .ahx-calendar-day.image-issue::after {
         background:
           var(--ahx-warning);
       }
-
 
       .ahx-day-number {
         font-size:
@@ -1786,11 +1738,7 @@
 
         font-weight:
           900;
-
-        line-height:
-          1;
       }
-
 
       .ahx-day-badge {
         position:
@@ -1815,7 +1763,7 @@
           #ffffff;
 
         background:
-          var(--ahx-primary-2);
+          var(--ahx-primary2);
 
         font-size:
           7px;
@@ -1823,20 +1771,15 @@
         font-weight:
           900;
 
-        line-height:
-          1.2;
-
         text-align:
           center;
       }
-
 
       .ahx-calendar-day.has-deny
       .ahx-day-badge {
         background:
           var(--ahx-danger);
       }
-
 
       .ahx-day-footer {
         display:
@@ -1855,7 +1798,6 @@
           auto;
       }
 
-
       .ahx-day-footer small {
         overflow:
           hidden;
@@ -1873,15 +1815,19 @@
           nowrap;
       }
 
-
-      .ahx-day-dots {
+      .ahx-day-dots,
+      .ahx-legend {
         display:
           flex;
 
+        align-items:
+          center;
+      }
+
+      .ahx-day-dots {
         gap:
           3px;
       }
-
 
       .ahx-day-dots i,
       .ahx-legend i {
@@ -1898,38 +1844,27 @@
           50%;
       }
 
-
       .ahx-dot-data {
         background:
-          var(--ahx-primary-2);
+          var(--ahx-primary2);
       }
-
 
       .ahx-dot-deny {
         background:
           var(--ahx-danger);
       }
 
-
       .ahx-dot-deleted {
         background:
           #7f8b91;
       }
-
 
       .ahx-dot-issue {
         background:
           var(--ahx-warning);
       }
 
-
       .ahx-legend {
-        display:
-          flex;
-
-        align-items:
-          center;
-
         justify-content:
           center;
 
@@ -1952,7 +1887,6 @@
           700;
       }
 
-
       .ahx-legend span {
         display:
           inline-flex;
@@ -1964,10 +1898,297 @@
           4px;
       }
 
+      .ahx-day-toolbar {
+        position:
+          sticky;
 
-      .ahx-state {
-        grid-column:
-          1 / -1;
+        top:
+          58px;
+
+        z-index:
+          20;
+
+        display:
+          grid;
+
+        grid-template-columns:
+          minmax(180px, 1.4fr)
+          repeat(
+            3,
+            minmax(120px, .7fr)
+          )
+          auto;
+
+        gap:
+          6px;
+
+        padding:
+          7px 8px;
+
+        border-top:
+          1px solid
+          rgba(255, 255, 255, .4);
+
+        border-bottom:
+          1px solid
+          var(--ahx-border);
+
+        background:
+          rgba(238, 243, 246, .96);
+
+        backdrop-filter:
+          blur(10px);
+      }
+
+      .ahx-search-wrap {
+        position:
+          relative;
+
+        min-width:
+          0;
+      }
+
+      .ahx-search-wrap span {
+        position:
+          absolute;
+
+        left:
+          10px;
+
+        top:
+          50%;
+
+        transform:
+          translateY(-50%);
+
+        color:
+          #71858f;
+
+        font-size:
+          13px;
+
+        pointer-events:
+          none;
+      }
+
+      .ahx-day-toolbar input,
+      .ahx-day-toolbar select {
+        width:
+          100%;
+
+        height:
+          36px;
+
+        min-width:
+          0;
+
+        padding:
+          6px 8px;
+
+        border:
+          1px solid
+          #c9d7de;
+
+        border-radius:
+          8px;
+
+        outline:
+          none;
+
+        color:
+          var(--ahx-text);
+
+        background:
+          #ffffff;
+
+        font:
+          inherit;
+
+        font-size:
+          9px;
+      }
+
+      .ahx-day-toolbar input {
+        padding-left:
+          29px;
+      }
+
+      .ahx-day-toolbar input:focus,
+      .ahx-day-toolbar select:focus {
+        border-color:
+          #55a0c2;
+
+        box-shadow:
+          0 0 0 3px
+          rgba(85, 160, 194, .13);
+      }
+
+      .ahx-filter-reset {
+        min-height:
+          36px;
+
+        padding:
+          5px 10px;
+
+        border:
+          1px solid
+          #c9d7de;
+
+        border-radius:
+          8px;
+
+        color:
+          #47606c;
+
+        background:
+          #ffffff;
+
+        font:
+          inherit;
+
+        font-size:
+          8px;
+
+        font-weight:
+          800;
+
+        white-space:
+          nowrap;
+      }
+
+      .ahx-result-bar {
+        display:
+          flex;
+
+        align-items:
+          center;
+
+        justify-content:
+          space-between;
+
+        gap:
+          8px;
+
+        padding:
+          0 8px 7px;
+
+        color:
+          #5f737d;
+
+        font-size:
+          8px;
+      }
+
+      .ahx-result-bar strong {
+        color:
+          var(--ahx-primary);
+      }
+
+      .ahx-card-grid {
+        display:
+          grid;
+
+        grid-template-columns:
+          repeat(
+            2,
+            minmax(0, 1fr)
+          );
+
+        gap:
+          9px;
+
+        padding:
+          0 8px 9px;
+      }
+
+      .ahx-person-card {
+        display:
+          grid;
+
+        cursor:
+          pointer;
+
+        grid-template-columns:
+          138px
+          minmax(0, 1fr);
+
+        min-width:
+          0;
+
+        min-height:
+          188px;
+
+        overflow:
+          hidden;
+
+        border:
+          1px solid
+          var(--ahx-border);
+
+        border-left:
+          4px solid
+          var(--ahx-success);
+
+        border-radius:
+          13px;
+
+        background:
+          #ffffff;
+
+        box-shadow:
+          0 5px 17px
+          rgba(17, 55, 76, .08);
+      }
+
+      .ahx-person-card.deny {
+        border-color:
+          #efb5b5;
+
+        border-left-color:
+          var(--ahx-danger);
+      }
+
+      .ahx-card-photo {
+        position:
+          relative;
+
+        min-height:
+          188px;
+
+        overflow:
+          hidden;
+
+        background:
+          linear-gradient(
+            145deg,
+            #dce7ec,
+            #f5f8fa
+          );
+      }
+
+      .ahx-card-photo img {
+        display:
+          block;
+
+        width:
+          100%;
+
+        height:
+          100%;
+
+        min-height:
+          188px;
+
+        object-fit:
+          cover;
+      }
+
+      .ahx-photo-placeholder {
+        position:
+          absolute;
+
+        inset:
+          0;
 
         display:
           flex;
@@ -1982,310 +2203,135 @@
           center;
 
         gap:
-          8px;
-
-        min-height:
-          190px;
+          6px;
 
         padding:
-          20px;
+          12px;
 
         color:
-          var(--ahx-muted);
+          #607580;
 
-        font-size:
-          10px;
+        background:
+          linear-gradient(
+            145deg,
+            #e5edf1,
+            #f8fafb
+          );
 
         text-align:
           center;
       }
 
-
-      .ahx-state.error {
+      .ahx-photo-placeholder.deleted {
         color:
-          var(--ahx-danger);
-      }
-
-
-      .ahx-spinner {
-        width:
-          28px;
-
-        height:
-          28px;
-
-        border:
-          3px solid
-          #d8e4e9;
-
-        border-top-color:
-          var(--ahx-primary-2);
-
-        border-radius:
-          50%;
-
-        animation:
-          ahx-spin
-          .7s
-          linear
-          infinite;
-      }
-
-
-      @keyframes ahx-spin {
-        to {
-          transform:
-            rotate(360deg);
-        }
-      }
-
-
-      .ahx-day-view {
-        min-height:
-          420px;
-      }
-
-
-      .ahx-back-button {
-        flex:
-          0 0 auto;
-
-        min-height:
-          32px;
-
-        padding:
-          5px 9px;
-
-        border:
-          1px solid
-          rgba(
-            255,
-            255,
-            255,
-            .28
-          );
-
-        border-radius:
-          8px;
-
-        color:
-          #ffffff;
+          #5f6c72;
 
         background:
-          rgba(
-            255,
-            255,
-            255,
-            .11
+          linear-gradient(
+            145deg,
+            #e1e4e6,
+            #f6f7f8
           );
-
-        font:
-          inherit;
-
-        font-size:
-          9px;
-
-        font-weight:
-          800;
       }
 
-
-      .ahx-breakdown {
-        display:
-          grid;
-
-        gap:
-          6px;
-
-        padding:
-          0 8px 8px;
-      }
-
-
-      .ahx-breakdown-row {
-        display:
-          grid;
-
-        grid-template-columns:
-          85px
-          minmax(0, 1fr);
-
-        gap:
-          7px;
-
-        align-items:
-          start;
-
-        padding:
-          7px;
-
-        border:
-          1px solid
-          var(--ahx-border);
-
-        border-radius:
-          9px;
+      .ahx-photo-placeholder.issue {
+        color:
+          #785c00;
 
         background:
-          #ffffff;
+          linear-gradient(
+            145deg,
+            #fff0bd,
+            #fff9e5
+          );
       }
 
-
-      .ahx-breakdown-row > strong {
-        color:
-          #49616c;
-
+      .ahx-photo-placeholder .icon {
         font-size:
-          8px;
+          27px;
 
         line-height:
-          1.5;
+          1;
       }
 
-
-      .ahx-chip-list {
-        display:
-          flex;
-
-        flex-wrap:
-          wrap;
-
-        gap:
-          4px;
+      .ahx-photo-placeholder strong {
+        font-size:
+          9px;
       }
 
+      .ahx-photo-placeholder small {
+        font-size:
+          7px;
 
-      .ahx-chip {
-        display:
-          inline-flex;
+        line-height:
+          1.35;
+      }
 
-        align-items:
-          center;
+      .ahx-photo-open {
+        position:
+          absolute;
+
+        right:
+          7px;
+
+        bottom:
+          7px;
 
         min-height:
-          22px;
+          28px;
 
         padding:
-          3px 7px;
+          4px 8px;
 
         border:
           1px solid
-          #cfe0e7;
+          rgba(255, 255, 255, .55);
 
         border-radius:
           999px;
 
         color:
-          #385865;
+          #ffffff;
 
         background:
-          #eff7fa;
+          rgba(5, 36, 53, .76);
+
+        font:
+          inherit;
 
         font-size:
           7px;
 
         font-weight:
-          700;
+          850;
+
+        backdrop-filter:
+          blur(6px);
       }
 
-
-      .ahx-chip b {
-        margin-left:
-          3px;
-
-        color:
-          var(--ahx-primary);
-      }
-
-
-      .ahx-record-list {
+      .ahx-card-body {
         display:
-          grid;
+          flex;
 
-        gap:
-          8px;
+        flex-direction:
+          column;
+
+        min-width:
+          0;
 
         padding:
-          0 8px 8px;
+          9px;
       }
 
-
-      .ahx-record {
-        overflow:
-          hidden;
-
-        border:
-          1px solid
-          var(--ahx-border);
-
-        border-left:
-          4px solid
-          var(--ahx-success);
-
-        border-radius:
-          11px;
-
-        background:
-          #ffffff;
-
-        box-shadow:
-          0 3px 12px
-          rgba(
-            16,
-            56,
-            80,
-            .07
-          );
-      }
-
-
-      .ahx-record.deny {
-        border-color:
-          #efb3b3;
-
-        border-left-color:
-          var(--ahx-danger);
-      }
-
-
-      .ahx-record-head {
+      .ahx-card-head {
         display:
           flex;
 
         align-items:
-          center;
+          flex-start;
 
         justify-content:
           space-between;
-
-        gap:
-          7px;
-
-        padding:
-          8px;
-
-        border-bottom:
-          1px solid
-          #e2e9ec;
-
-        background:
-          #f8fafb;
-      }
-
-
-      .ahx-record.deny
-      .ahx-record-head {
-        background:
-          #fff2f2;
-      }
-
-
-      .ahx-record-person {
-        display:
-          flex;
-
-        align-items:
-          center;
 
         gap:
           7px;
@@ -2294,34 +2340,26 @@
           0;
       }
 
-
-      .ahx-record-time {
-        flex:
-          0 0 auto;
-
-        color:
-          #607783;
-
-        font-size:
-          8px;
-
-        font-weight:
-          800;
+      .ahx-card-identity {
+        min-width:
+          0;
       }
 
+      .ahx-card-identity h3 {
+        margin:
+          0;
 
-      .ahx-record-name {
         overflow:
           hidden;
 
         color:
-          #1f3945;
+          #1b3642;
 
         font-size:
-          11px;
+          12px;
 
-        font-weight:
-          900;
+        line-height:
+          1.3;
 
         text-overflow:
           ellipsis;
@@ -2330,13 +2368,55 @@
           nowrap;
       }
 
+      .ahx-card-identity p {
+        margin:
+          3px 0 0;
 
-      .ahx-status-badge {
+        overflow:
+          hidden;
+
+        color:
+          #6a7d86;
+
+        font-size:
+          8px;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+      .ahx-card-time {
         flex:
           0 0 auto;
 
+        color:
+          #54707c;
+
+        font-size:
+          8px;
+
+        font-weight:
+          850;
+      }
+
+      .ahx-status-badge {
+        display:
+          inline-flex;
+
+        align-items:
+          center;
+
+        align-self:
+          flex-start;
+
+        margin-top:
+          7px;
+
         max-width:
-          44%;
+          100%;
 
         padding:
           4px 7px;
@@ -2360,7 +2440,6 @@
           nowrap;
       }
 
-
       .ahx-status-badge.allow {
         color:
           #087347;
@@ -2368,7 +2447,6 @@
         background:
           #ddf5e8;
       }
-
 
       .ahx-status-badge.deny {
         color:
@@ -2378,67 +2456,57 @@
           var(--ahx-danger);
       }
 
-
-      .ahx-record-meta {
+      .ahx-card-lines {
         display:
           grid;
 
-        grid-template-columns:
-          repeat(
-            4,
-            minmax(0, 1fr)
-          );
+        gap:
+          4px;
+
+        margin-top:
+          8px;
+      }
+
+      .ahx-card-line {
+        display:
+          flex;
+
+        align-items:
+          center;
 
         gap:
           5px;
 
-        padding:
-          7px 8px 2px;
-      }
-
-
-      .ahx-meta-item {
         min-width:
           0;
 
-        padding:
-          5px 6px;
-
-        border-radius:
-          7px;
-
-        background:
-          #f4f8fa;
-      }
-
-
-      .ahx-meta-item small {
-        display:
-          block;
-
         color:
-          #71838c;
+          #58707b;
 
         font-size:
-          6px;
+          7px;
       }
 
+      .ahx-card-line span:first-child {
+        flex:
+          0 0 auto;
 
-      .ahx-meta-item strong {
-        display:
-          block;
+        width:
+          15px;
 
-        margin-top:
-          1px;
+        text-align:
+          center;
+      }
 
+      .ahx-card-line b {
         overflow:
           hidden;
 
         color:
-          #2d4a57;
+          #2e4b58;
 
-        font-size:
-          8px;
+        font-weight:
+          800;
 
         text-overflow:
           ellipsis;
@@ -2447,44 +2515,38 @@
           nowrap;
       }
 
-
-      .ahx-value-grid {
+      .ahx-card-values {
         display:
           grid;
 
         grid-template-columns:
           repeat(
-            4,
+            3,
             minmax(0, 1fr)
           );
 
         gap:
           4px;
 
-        padding:
-          5px 8px 7px;
+        margin-top:
+          8px;
       }
 
-
-      .ahx-value-card {
+      .ahx-card-value {
         min-width:
           0;
 
         padding:
           5px 3px;
 
-        border:
-          1px solid
-          #dce5e9;
-
         border-radius:
           7px;
 
         color:
-          #6b7e87;
+          #71828a;
 
         background:
-          #fafcfd;
+          #f3f7f9;
 
         font-size:
           6px;
@@ -2493,8 +2555,7 @@
           center;
       }
 
-
-      .ahx-value-card b {
+      .ahx-card-value strong {
         display:
           block;
 
@@ -2508,10 +2569,7 @@
           var(--ahx-primary);
 
         font-size:
-          10px;
-
-        font-weight:
-          900;
+          9px;
 
         text-overflow:
           ellipsis;
@@ -2520,8 +2578,13 @@
           nowrap;
       }
 
+      .ahx-person-card.deny
+      .ahx-card-value.max strong {
+        color:
+          var(--ahx-danger);
+      }
 
-      .ahx-image-status {
+      .ahx-card-foot {
         display:
           flex;
 
@@ -2532,149 +2595,24 @@
           space-between;
 
         gap:
-          7px;
-
-        margin:
-          0 8px 7px;
-
-        padding:
-          6px 7px;
-
-        border:
-          1px solid
-          #d8e2e7;
-
-        border-radius:
-          8px;
-
-        color:
-          #506975;
-
-        background:
-          #f7fafb;
-
-        font-size:
-          7px;
-      }
-
-
-      .ahx-image-status strong {
-        font-size:
-          7px;
-      }
-
-
-      .ahx-image-status small {
-        color:
-          #7c8c94;
-
-        font-size:
           6px;
 
-        text-align:
-          right;
-      }
-
-
-      .ahx-round-list {
-        display:
-          grid;
-
-        gap:
-          5px;
-
-        padding:
-          0 8px 8px;
-      }
-
-
-      .ahx-round {
-        display:
-          grid;
-
-        grid-template-columns:
-          minmax(110px, .85fr)
-          minmax(120px, 1.15fr)
+        margin-top:
           auto;
 
-        align-items:
-          center;
-
-        gap:
-          6px;
-
-        min-width:
-          0;
-
-        padding:
-          6px;
-
-        border:
-          1px solid
-          #dce5e9;
-
-        border-radius:
+        padding-top:
           8px;
       }
 
-
-      .ahx-round-main,
-      .ahx-round-photo {
+      .ahx-card-image-state {
         min-width:
           0;
-      }
-
-
-      .ahx-round-main strong,
-      .ahx-round-photo strong {
-        display:
-          block;
 
         overflow:
           hidden;
 
         color:
-          #3b5662;
-
-        font-size:
-          7px;
-
-        text-overflow:
-          ellipsis;
-
-        white-space:
-          nowrap;
-      }
-
-
-      .ahx-round-main b {
-        display:
-          block;
-
-        margin-top:
-          1px;
-
-        color:
-          var(--ahx-primary);
-
-        font-size:
-          10px;
-      }
-
-
-      .ahx-round-main small,
-      .ahx-round-photo small {
-        display:
-          block;
-
-        overflow:
-          hidden;
-
-        margin-top:
-          1px;
-
-        color:
-          #7b8c94;
+          #6d7f88;
 
         font-size:
           6px;
@@ -2686,25 +2624,27 @@
           nowrap;
       }
 
+      .ahx-detail-button {
+        flex:
+          0 0 auto;
 
-      .ahx-view-image {
         min-height:
           30px;
 
         padding:
-          4px 8px;
+          5px 8px;
 
         border:
           0;
 
         border-radius:
-          7px;
+          8px;
 
         color:
           #ffffff;
 
         background:
-          var(--ahx-primary-2);
+          var(--ahx-primary2);
 
         font:
           inherit;
@@ -2718,56 +2658,6 @@
         white-space:
           nowrap;
       }
-
-
-      .ahx-no-image {
-        color:
-          #8b999f;
-
-        font-size:
-          6px;
-
-        font-weight:
-          700;
-
-        text-align:
-          center;
-      }
-
-
-      .ahx-record-id {
-        padding:
-          4px 8px;
-
-        overflow:
-          hidden;
-
-        border-top:
-          1px dashed
-          #dce5e9;
-
-        color:
-          #8d999f;
-
-        background:
-          #fafcfd;
-
-        font-family:
-          ui-monospace,
-          SFMono-Regular,
-          Consolas,
-          monospace;
-
-        font-size:
-          6px;
-
-        text-overflow:
-          ellipsis;
-
-        white-space:
-          nowrap;
-      }
-
 
       .ahx-pagination {
         display:
@@ -2787,7 +2677,6 @@
         padding:
           0 8px 12px;
       }
-
 
       .ahx-pagination button {
         min-height:
@@ -2816,12 +2705,10 @@
           850;
       }
 
-
       .ahx-pagination button:disabled {
         opacity:
           .42;
       }
-
 
       .ahx-pagination span {
         color:
@@ -2837,7 +2724,6 @@
           center;
       }
 
-
       .ahx-pagination small {
         display:
           block;
@@ -2852,8 +2738,76 @@
           6px;
       }
 
+      .ahx-state {
+        grid-column:
+          1 / -1;
 
-      .ahx-image-overlay {
+        display:
+          flex;
+
+        flex-direction:
+          column;
+
+        align-items:
+          center;
+
+        justify-content:
+          center;
+
+        gap:
+          8px;
+
+        min-height:
+          170px;
+
+        padding:
+          20px;
+
+        color:
+          var(--ahx-muted);
+
+        font-size:
+          10px;
+
+        text-align:
+          center;
+      }
+
+      .ahx-state.error {
+        color:
+          var(--ahx-danger);
+      }
+
+      .ahx-spinner {
+        width:
+          28px;
+
+        height:
+          28px;
+
+        border:
+          3px solid
+          #d8e4e9;
+
+        border-top-color:
+          var(--ahx-primary2);
+
+        border-radius:
+          50%;
+
+        animation:
+          ahx-spin
+          .7s linear infinite;
+      }
+
+      @keyframes ahx-spin {
+        to {
+          transform:
+            rotate(360deg);
+        }
+      }
+
+      .ahx-overlay {
         position:
           fixed;
 
@@ -2873,16 +2827,10 @@
           10px;
 
         background:
-          rgba(
-            2,
-            12,
-            18,
-            .92
-          );
+          rgba(2, 12, 18, .92);
       }
 
-
-      .ahx-image-dialog {
+      .ahx-dialog {
         display:
           grid;
 
@@ -2893,7 +2841,7 @@
         width:
           min(
             96vw,
-            820px
+            860px
           );
 
         max-height:
@@ -2904,31 +2852,25 @@
 
         border:
           1px solid
-          rgba(
-            255,
-            255,
-            255,
-            .18
-          );
+          rgba(255, 255, 255, .18);
 
         border-radius:
           14px;
 
         background:
-          #07131a;
+          #f1f5f7;
 
         box-shadow:
           0 24px 80px
-          rgba(
-            0,
-            0,
-            0,
-            .52
-          );
+          rgba(0, 0, 0, .52);
       }
 
+      .ahx-dialog.dark {
+        background:
+          #07131a;
+      }
 
-      .ahx-image-head {
+      .ahx-dialog-head {
         display:
           flex;
 
@@ -2942,7 +2884,7 @@
           8px;
 
         min-height:
-          46px;
+          48px;
 
         padding:
           8px 10px;
@@ -2954,14 +2896,21 @@
           #0d354c;
       }
 
+      .ahx-dialog-head strong {
+        overflow:
+          hidden;
 
-      .ahx-image-head strong {
         font-size:
           11px;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
       }
 
-
-      .ahx-image-head button {
+      .ahx-dialog-head button {
         display:
           grid;
 
@@ -2979,12 +2928,7 @@
 
         border:
           1px solid
-          rgba(
-            255,
-            255,
-            255,
-            .24
-          );
+          rgba(255, 255, 255, .24);
 
         border-radius:
           50%;
@@ -2993,12 +2937,7 @@
           #ffffff;
 
         background:
-          rgba(
-            255,
-            255,
-            255,
-            .10
-          );
+          rgba(255, 255, 255, .10);
 
         font:
           inherit;
@@ -3007,8 +2946,19 @@
           20px;
       }
 
+      .ahx-dialog-body {
+        min-height:
+          230px;
 
-      .ahx-image-body {
+        overflow:
+          auto;
+
+        padding:
+          9px;
+      }
+
+      .ahx-dialog.dark
+      .ahx-dialog-body {
         display:
           flex;
 
@@ -3021,21 +2971,20 @@
         justify-content:
           center;
 
-        min-height:
-          230px;
+        color:
+          #d9e7ed;
 
-        overflow:
-          auto;
+        background:
+          #050b0f;
+      }
 
-        padding:
-          9px;
-
+      .ahx-dialog.dark
+      .ahx-state {
         color:
           #d9e7ed;
       }
 
-
-      .ahx-image-body img {
+      .ahx-dialog.dark img {
         display:
           block;
 
@@ -3045,7 +2994,7 @@
         max-height:
           calc(
             94dvh -
-            90px
+            95px
           );
 
         border-radius:
@@ -3055,18 +3004,12 @@
           contain;
       }
 
-
       .ahx-image-caption {
         margin-top:
           7px;
 
         color:
-          rgba(
-            255,
-            255,
-            255,
-            .65
-          );
+          rgba(255, 255, 255, .65);
 
         font-size:
           7px;
@@ -3075,9 +3018,444 @@
           center;
       }
 
+      .ahx-detail-layout {
+        display:
+          grid;
+
+        grid-template-columns:
+          minmax(240px, .8fr)
+          minmax(0, 1.2fr);
+
+        gap:
+          9px;
+      }
+
+      .ahx-detail-photo {
+        position:
+          sticky;
+
+        top:
+          0;
+
+        align-self:
+          start;
+
+        min-height:
+          300px;
+
+        overflow:
+          hidden;
+
+        border:
+          1px solid
+          var(--ahx-border);
+
+        border-radius:
+          12px;
+
+        background:
+          #e7eef2;
+      }
+
+      .ahx-detail-photo img {
+        display:
+          block;
+
+        width:
+          100%;
+
+        height:
+          100%;
+
+        min-height:
+          300px;
+
+        max-height:
+          560px;
+
+        object-fit:
+          contain;
+
+        background:
+          #111b20;
+      }
+
+      .ahx-detail-content {
+        display:
+          grid;
+
+        gap:
+          8px;
+
+        min-width:
+          0;
+      }
+
+      .ahx-detail-title {
+        display:
+          flex;
+
+        align-items:
+          flex-start;
+
+        justify-content:
+          space-between;
+
+        gap:
+          8px;
+
+        padding:
+          10px;
+
+        border:
+          1px solid
+          var(--ahx-border);
+
+        border-radius:
+          11px;
+
+        background:
+          #ffffff;
+      }
+
+      .ahx-detail-title h3 {
+        margin:
+          0;
+
+        color:
+          #1b3642;
+
+        font-size:
+          15px;
+      }
+
+      .ahx-detail-title p {
+        margin:
+          4px 0 0;
+
+        color:
+          #6b7e87;
+
+        font-size:
+          8px;
+      }
+
+      .ahx-detail-meta {
+        display:
+          grid;
+
+        grid-template-columns:
+          repeat(
+            2,
+            minmax(0, 1fr)
+          );
+
+        gap:
+          5px;
+      }
+
+      .ahx-detail-meta > div {
+        min-width:
+          0;
+
+        padding:
+          7px;
+
+        border:
+          1px solid
+          var(--ahx-border);
+
+        border-radius:
+          8px;
+
+        background:
+          #ffffff;
+      }
+
+      .ahx-detail-meta small {
+        display:
+          block;
+
+        color:
+          #72848d;
+
+        font-size:
+          7px;
+      }
+
+      .ahx-detail-meta strong {
+        display:
+          block;
+
+        margin-top:
+          2px;
+
+        overflow:
+          hidden;
+
+        color:
+          #294754;
+
+        font-size:
+          9px;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+      .ahx-detail-values {
+        display:
+          grid;
+
+        grid-template-columns:
+          repeat(
+            4,
+            minmax(0, 1fr)
+          );
+
+        gap:
+          5px;
+      }
+
+      .ahx-detail-values > div {
+        padding:
+          7px 4px;
+
+        border:
+          1px solid
+          var(--ahx-border);
+
+        border-radius:
+          8px;
+
+        background:
+          #ffffff;
+
+        color:
+          #71828a;
+
+        font-size:
+          7px;
+
+        text-align:
+          center;
+      }
+
+      .ahx-detail-values strong {
+        display:
+          block;
+
+        margin-top:
+          2px;
+
+        color:
+          var(--ahx-primary);
+
+        font-size:
+          11px;
+      }
+
+      .ahx-image-status {
+        display:
+          flex;
+
+        align-items:
+          center;
+
+        justify-content:
+          space-between;
+
+        gap:
+          8px;
+
+        padding:
+          8px;
+
+        border:
+          1px solid
+          var(--ahx-border);
+
+        border-radius:
+          9px;
+
+        color:
+          #526b76;
+
+        background:
+          #ffffff;
+      }
+
+      .ahx-image-status strong {
+        font-size:
+          8px;
+      }
+
+      .ahx-image-status small {
+        color:
+          #7a8b93;
+
+        font-size:
+          7px;
+
+        text-align:
+          right;
+      }
+
+      .ahx-round-list {
+        display:
+          grid;
+
+        gap:
+          5px;
+      }
+
+      .ahx-round-row {
+        display:
+          grid;
+
+        grid-template-columns:
+          48px
+          minmax(80px, .7fr)
+          minmax(120px, 1.3fr)
+          auto;
+
+        align-items:
+          center;
+
+        gap:
+          6px;
+
+        padding:
+          7px;
+
+        border:
+          1px solid
+          var(--ahx-border);
+
+        border-radius:
+          8px;
+
+        background:
+          #ffffff;
+      }
+
+      .ahx-round-row strong {
+        color:
+          #344f5c;
+
+        font-size:
+          8px;
+      }
+
+      .ahx-round-row b {
+        color:
+          var(--ahx-primary);
+
+        font-size:
+          10px;
+      }
+
+      .ahx-round-row small {
+        overflow:
+          hidden;
+
+        color:
+          #74868e;
+
+        font-size:
+          7px;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
+
+      .ahx-round-row button {
+        min-height:
+          29px;
+
+        padding:
+          4px 8px;
+
+        border:
+          0;
+
+        border-radius:
+          7px;
+
+        color:
+          #ffffff;
+
+        background:
+          var(--ahx-primary2);
+
+        font:
+          inherit;
+
+        font-size:
+          7px;
+
+        font-weight:
+          900;
+      }
+
+      .ahx-no-image {
+        color:
+          #8b999f;
+
+        font-size:
+          6px;
+
+        font-weight:
+          700;
+
+        text-align:
+          center;
+      }
+
+      .ahx-record-id {
+        overflow:
+          hidden;
+
+        padding:
+          5px 7px;
+
+        border:
+          1px dashed
+          #d6e1e6;
+
+        border-radius:
+          7px;
+
+        color:
+          #87959c;
+
+        background:
+          #fafcfd;
+
+        font-family:
+          ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+
+        font-size:
+          6px;
+
+        text-overflow:
+          ellipsis;
+
+        white-space:
+          nowrap;
+      }
 
       @media (
-        max-width: 700px
+        max-width: 760px
       ) {
 
         .ahx-main-popup {
@@ -3097,7 +3475,6 @@
             0 !important;
         }
 
-
         .ahx-main-html {
           height:
             100dvh !important;
@@ -3105,7 +3482,6 @@
           max-height:
             100dvh !important;
         }
-
 
         .ahx-topbar {
           padding-top:
@@ -3117,7 +3493,6 @@
               )
             );
         }
-
 
         .ahx-summary-grid {
           grid-template-columns:
@@ -3133,92 +3508,75 @@
             7px;
         }
 
-
-        .ahx-summary-card {
-          min-height:
-            52px;
-        }
-
-
-        .ahx-calendar-wrap {
-          margin-right:
-            6px;
-
-          margin-left:
-            6px;
-        }
-
-
-        .ahx-calendar-grid {
-          gap:
-            3px;
-
-          padding:
-            4px;
-        }
-
-
-        .ahx-calendar-day,
-        .ahx-calendar-empty {
-          min-height:
-            52px;
-        }
-
-
-        .ahx-calendar-day {
-          padding:
-            5px 4px;
-
-          border-radius:
-            7px;
-        }
-
-
-        .ahx-day-number {
-          font-size:
-            11px;
-        }
-
-
-        .ahx-day-badge {
-          top:
-            4px;
-
-          right:
-            4px;
-
-          padding:
-            1px 4px;
-
-          font-size:
-            6px;
-        }
-
-
-        .ahx-day-footer small {
-          display:
-            none;
-        }
-
-
-        .ahx-record-meta {
+        .ahx-summary-grid.compact {
           grid-template-columns:
             repeat(
-              2,
+              4,
               minmax(0, 1fr)
             );
         }
 
+        .ahx-day-toolbar {
+          top:
+            calc(
+              58px +
+              env(
+                safe-area-inset-top,
+                0px
+              )
+            );
 
-        .ahx-round {
           grid-template-columns:
-            minmax(85px, .85fr)
-            minmax(100px, 1.15fr)
-            auto;
+            minmax(0, 1fr)
+            minmax(105px, .45fr);
+
+          gap:
+            5px;
         }
 
+        .ahx-day-toolbar
+        select:nth-of-type(2),
+        .ahx-day-toolbar
+        select:nth-of-type(3) {
+          display:
+            none;
+        }
 
-        .ahx-image-dialog {
+        .ahx-filter-reset {
+          display:
+            none;
+        }
+
+        .ahx-card-grid {
+          grid-template-columns:
+            1fr;
+
+          gap:
+            7px;
+
+          padding-right:
+            6px;
+
+          padding-left:
+            6px;
+        }
+
+        .ahx-person-card {
+          grid-template-columns:
+            120px
+            minmax(0, 1fr);
+
+          min-height:
+            164px;
+        }
+
+        .ahx-card-photo,
+        .ahx-card-photo img {
+          min-height:
+            164px;
+        }
+
+        .ahx-dialog {
           width:
             100vw;
 
@@ -3235,8 +3593,36 @@
             0;
         }
 
-      }
+        .ahx-detail-layout {
+          grid-template-columns:
+            1fr;
+        }
 
+        .ahx-detail-photo {
+          position:
+            relative;
+
+          min-height:
+            240px;
+        }
+
+        .ahx-detail-photo img {
+          min-height:
+            240px;
+
+          max-height:
+            44dvh;
+        }
+
+        .ahx-round-row {
+          grid-template-columns:
+            42px
+            minmax(68px, .7fr)
+            minmax(90px, 1.3fr)
+            auto;
+        }
+
+      }
 
       @media (
         max-width: 390px
@@ -3250,7 +3636,6 @@
             17px;
         }
 
-
         .ahx-login-actions {
           padding-right:
             17px !important;
@@ -3259,13 +3644,11 @@
             17px !important;
         }
 
-
         .ahx-confirm-button,
         .ahx-cancel-button {
           min-width:
             100px !important;
         }
-
 
         .ahx-topbar {
           padding-right:
@@ -3274,7 +3657,6 @@
           padding-left:
             8px;
         }
-
 
         .ahx-topbar-logo {
           flex-basis:
@@ -3287,12 +3669,10 @@
             32px;
         }
 
-
         .ahx-topbar h2 {
           font-size:
             12px;
         }
-
 
         .ahx-text-button {
           padding-right:
@@ -3305,7 +3685,6 @@
             7px;
         }
 
-
         .ahx-summary-grid {
           grid-template-columns:
             repeat(
@@ -3314,12 +3693,18 @@
             );
         }
 
+        .ahx-summary-grid.compact {
+          grid-template-columns:
+            repeat(
+              4,
+              minmax(0, 1fr)
+            );
+        }
 
         .ahx-summary-card strong {
           font-size:
             12px;
         }
-
 
         .ahx-calendar-day,
         .ahx-calendar-empty {
@@ -3327,39 +3712,65 @@
             48px;
         }
 
-
-        .ahx-breakdown-row {
+        .ahx-person-card {
           grid-template-columns:
-            66px
+            106px
             minmax(0, 1fr);
+
+          min-height:
+            154px;
         }
 
+        .ahx-card-photo,
+        .ahx-card-photo img {
+          min-height:
+            154px;
+        }
 
-        .ahx-value-grid {
+        .ahx-card-body {
+          padding:
+            7px;
+        }
+
+        .ahx-card-identity h3 {
+          font-size:
+            11px;
+        }
+
+        .ahx-card-lines {
           gap:
             3px;
 
-          padding-right:
-            6px;
-
-          padding-left:
+          margin-top:
             6px;
         }
 
+        .ahx-card-values {
+          gap:
+            3px;
 
-        .ahx-round-list {
-          padding-right:
-            6px;
-
-          padding-left:
+          margin-top:
             6px;
         }
 
-
-        .ahx-round {
+        .ahx-detail-meta {
           grid-template-columns:
-            minmax(70px, .8fr)
-            minmax(78px, 1.2fr)
+            1fr 1fr;
+        }
+
+        .ahx-detail-values {
+          grid-template-columns:
+            repeat(
+              2,
+              minmax(0, 1fr)
+            );
+        }
+
+        .ahx-round-row {
+          grid-template-columns:
+            38px
+            minmax(58px, .7fr)
+            minmax(66px, 1.3fr)
             auto;
 
           gap:
@@ -3368,7 +3779,6 @@
           padding:
             5px;
         }
-
 
         .ahx-pagination {
           grid-template-columns:
@@ -3386,7 +3796,7 @@
 
 
   /************************************************************
-   * Camera Pause / Resume
+   * Camera
    ************************************************************/
 
   function pauseCamera() {
@@ -3482,9 +3892,6 @@
 
       button.id =
         'historyAccessButton';
-
-      button.type =
-        'button';
 
       button.innerHTML =
         '<span aria-hidden="true">🔒</span>' +
@@ -3625,7 +4032,6 @@
 
             '</div>' +
 
-
             '<div class="ahx-field">' +
 
               '<label for="ahxLoginName">' +
@@ -3641,7 +4047,6 @@
               '>' +
 
             '</div>' +
-
 
             '<div class="ahx-field">' +
 
@@ -3659,15 +4064,12 @@
 
             '</div>' +
 
-
             '<div class="ahx-login-note">' +
-              '<span aria-hidden="true">' +
-                'ℹ️' +
-              '</span>' +
+              '<span>ℹ️</span>' +
 
               '<span>' +
-                'ระบบจะเก็บ Session เฉพาะแท็บนี้ ' +
-                'และออกจากระบบอัตโนมัติเมื่อ Session หมดอายุ' +
+                'Session จะถูกเก็บเฉพาะแท็บนี้ ' +
+                'และหมดอายุอัตโนมัติ' +
               '</span>' +
             '</div>' +
 
@@ -3691,13 +4093,13 @@
         showLoaderOnConfirm:
           true,
 
+        buttonsStyling:
+          false,
+
         allowOutsideClick:
           function () {
             return !Swal.isLoading();
           },
-
-        buttonsStyling:
-          false,
 
         customClass: {
           popup:
@@ -3769,26 +4171,24 @@
 
         preConfirm:
           async function () {
-            const nameInput =
-              getElement(
-                'ahxLoginName'
-              );
-
-            const passInput =
-              getElement(
-                'ahxLoginPass'
-              );
-
             const name =
               cleanText(
-                nameInput &&
-                nameInput.value
+                getElement(
+                  'ahxLoginName'
+                ) &&
+                getElement(
+                  'ahxLoginName'
+                ).value
               );
 
             const pas =
               cleanText(
-                passInput &&
-                passInput.value
+                getElement(
+                  'ahxLoginPass'
+                ) &&
+                getElement(
+                  'ahxLoginPass'
+                ).value
               );
 
             if (!name || !pas) {
@@ -3888,13 +4288,12 @@
       },
 
       didOpen:
-        function () {
-          renderCalendarView();
-        },
+        renderCalendarView,
 
       willClose:
         function () {
-          releaseImageData();
+          disconnectThumbnailObserver();
+          closeOverlay();
         }
     });
   }
@@ -3946,7 +4345,6 @@
           '</div>' +
 
         '</div>' +
-
 
         '<div class="ahx-topbar-actions">' +
 
@@ -4008,6 +4406,9 @@
    ************************************************************/
 
   function renderCalendarView() {
+    disconnectThumbnailObserver();
+    closeOverlay();
+
     const root =
       getElement(
         'ahxRoot'
@@ -4020,14 +4421,15 @@
     root.innerHTML =
       mainHeaderHtml(
         'ประวัติการตรวจวัดแอลกอฮอล์',
+
         'ผู้ใช้งาน: ' +
         (
           state.name ||
           '-'
         ),
+
         false
       ) +
-
 
       '<section class="ahx-month-panel">' +
 
@@ -4040,6 +4442,7 @@
         '</button>' +
 
         '<div class="ahx-month-title">' +
+
           '<strong id="ahxMonthTitle">' +
             escapeHtml(
               monthTitle(
@@ -4051,6 +4454,7 @@
           '<small id="ahxMonthGenerated">' +
             'กำลังโหลดข้อมูล...' +
           '</small>' +
+
         '</div>' +
 
         '<button ' +
@@ -4063,12 +4467,10 @@
 
       '</section>' +
 
-
       '<section ' +
         'id="ahxMonthSummary" ' +
         'class="ahx-summary-grid"' +
       '></section>' +
-
 
       '<section class="ahx-calendar-wrap">' +
 
@@ -4086,13 +4488,14 @@
           'id="ahxCalendarGrid" ' +
           'class="ahx-calendar-grid"' +
         '>' +
+
           loadingHtml(
             'กำลังโหลดข้อมูลรายเดือน...'
           ) +
+
         '</div>' +
 
       '</section>' +
-
 
       '<div class="ahx-legend">' +
 
@@ -4120,43 +4523,33 @@
 
     bindCommonHeaderEvents();
 
-    const previousButton =
-      getElement(
-        'ahxPreviousMonth'
-      );
+    getElement(
+      'ahxPreviousMonth'
+    ).addEventListener(
+      'click',
+      function () {
+        loadMonth(
+          shiftMonth(
+            state.currentMonth,
+            -1
+          )
+        );
+      }
+    );
 
-    const nextButton =
-      getElement(
-        'ahxNextMonth'
-      );
-
-    if (previousButton) {
-      previousButton.addEventListener(
-        'click',
-        function () {
-          loadMonth(
-            shiftMonth(
-              state.currentMonth,
-              -1
-            )
-          );
-        }
-      );
-    }
-
-    if (nextButton) {
-      nextButton.addEventListener(
-        'click',
-        function () {
-          loadMonth(
-            shiftMonth(
-              state.currentMonth,
-              1
-            )
-          );
-        }
-      );
-    }
+    getElement(
+      'ahxNextMonth'
+    ).addEventListener(
+      'click',
+      function () {
+        loadMonth(
+          shiftMonth(
+            state.currentMonth,
+            1
+          )
+        );
+      }
+    );
 
     if (
       state.monthData &&
@@ -4175,9 +4568,7 @@
   }
 
 
-  async function loadMonth(
-    monthKey
-  ) {
+  async function loadMonth(monthKey) {
     const grid =
       getElement(
         'ahxCalendarGrid'
@@ -4363,6 +4754,8 @@
               state.currentPage =
                 1;
 
+              resetDayFilters();
+
               renderDayView(
                 selectedDate
               );
@@ -4469,7 +4862,8 @@
       );
     }
 
-    let html = '';
+    let html =
+      '';
 
     const totalDays =
       daysInMonth(
@@ -4548,17 +4942,13 @@
       );
     }
 
-    if (
-      item.allImagesDeleted
-    ) {
+    if (item.allImagesDeleted) {
       classes.push(
         'images-deleted'
       );
     }
 
-    if (
-      item.hasImageIssue
-    ) {
+    if (item.hasImageIssue) {
       classes.push(
         'image-issue'
       );
@@ -4572,16 +4962,6 @@
         '" ' +
         'data-ahx-date="' +
           escapeAttribute(key) +
-        '" ' +
-        'title="' +
-          escapeAttribute(
-            displayDateKey(key) +
-            ' | ' +
-            item.totalRecords +
-            ' รายการ' +
-            ' | ห้ามเข้า ' +
-            item.denyCount
-          ) +
         '"' +
       '>' +
 
@@ -4641,9 +5021,25 @@
    * Daily View
    ************************************************************/
 
-  function renderDayView(
-    selectedDate
-  ) {
+  function resetDayFilters() {
+    state.filters.search =
+      '';
+
+    state.filters.status =
+      'ALL';
+
+    state.filters.checkpoint =
+      '';
+
+    state.filters.image =
+      'ALL';
+  }
+
+
+  function renderDayView(selectedDate) {
+    disconnectThumbnailObserver();
+    closeOverlay();
+
     const root =
       getElement(
         'ahxRoot'
@@ -4654,48 +5050,120 @@
     }
 
     root.innerHTML =
-      '<div class="ahx-day-view">' +
+      mainHeaderHtml(
+        'ข้อมูลวันที่ ' +
+        displayDateKey(
+          selectedDate
+        ),
 
-        mainHeaderHtml(
-          'ข้อมูลวันที่ ' +
-          displayDateKey(
-            selectedDate
-          ),
+        'ผู้ใช้งาน: ' +
+        (
+          state.name ||
+          '-'
+        ),
 
-          'ผู้ใช้งาน: ' +
-          (
-            state.name ||
-            '-'
-          ),
+        true
+      ) +
 
-          true
+      '<section ' +
+        'id="ahxDaySummary" ' +
+        'class="ahx-summary-grid compact"' +
+      '></section>' +
+
+      '<section class="ahx-day-toolbar">' +
+
+        '<div class="ahx-search-wrap">' +
+          '<span>⌕</span>' +
+
+          '<input ' +
+            'id="ahxSearchInput" ' +
+            'type="search" ' +
+            'autocomplete="off" ' +
+            'placeholder="ค้นหาชื่อ บริษัท จุดตรวจ หรือผู้ตรวจ"' +
+          '>' +
+        '</div>' +
+
+        '<select ' +
+          'id="ahxStatusFilter" ' +
+          'aria-label="กรองผลตรวจ"' +
+        '>' +
+          '<option value="ALL">' +
+            'ผลตรวจทั้งหมด' +
+          '</option>' +
+
+          '<option value="ALLOW">' +
+            'อนุญาต' +
+          '</option>' +
+
+          '<option value="DENY">' +
+            'ห้ามเข้าพื้นที่' +
+          '</option>' +
+        '</select>' +
+
+        '<select ' +
+          'id="ahxCheckpointFilter" ' +
+          'aria-label="กรองจุดตรวจ"' +
+        '>' +
+          '<option value="">' +
+            'ทุกจุดตรวจ' +
+          '</option>' +
+        '</select>' +
+
+        '<select ' +
+          'id="ahxImageFilter" ' +
+          'aria-label="กรองสถานะภาพ"' +
+        '>' +
+          '<option value="ALL">' +
+            'ภาพทั้งหมด' +
+          '</option>' +
+
+          '<option value="AVAILABLE">' +
+            'ภาพพร้อมดู' +
+          '</option>' +
+
+          '<option value="DELETED">' +
+            'ภาพถูกลบ' +
+          '</option>' +
+
+          '<option value="ISSUE">' +
+            'ภาพมีปัญหา' +
+          '</option>' +
+        '</select>' +
+
+        '<button ' +
+          'id="ahxResetFilters" ' +
+          'type="button" ' +
+          'class="ahx-filter-reset"' +
+        '>' +
+          'ล้างตัวกรอง' +
+        '</button>' +
+
+      '</section>' +
+
+      '<div ' +
+        'id="ahxResultBar" ' +
+        'class="ahx-result-bar"' +
+      '>' +
+        '<span>' +
+          'กำลังโหลดข้อมูล...' +
+        '</span>' +
+      '</div>' +
+
+      '<section ' +
+        'id="ahxCardGrid" ' +
+        'class="ahx-card-grid"' +
+      '>' +
+
+        loadingHtml(
+          'กำลังโหลดข้อมูลรายวัน...'
         ) +
 
-        '<section ' +
-          'id="ahxDaySummary" ' +
-          'class="ahx-summary-grid"' +
-        '></section>' +
+      '</section>' +
 
-        '<section ' +
-          'id="ahxDayBreakdown" ' +
-          'class="ahx-breakdown"' +
-        '></section>' +
-
-        '<section ' +
-          'id="ahxRecordList" ' +
-          'class="ahx-record-list"' +
-        '>' +
-          loadingHtml(
-            'กำลังโหลดข้อมูลรายวัน...'
-          ) +
-        '</section>' +
-
-        '<section ' +
-          'id="ahxPagination" ' +
-          'class="ahx-pagination"' +
-        '></section>' +
-
-      '</div>';
+      '<section ' +
+        'id="ahxPagination" ' +
+        'class="ahx-pagination"' +
+      '></section>';
 
     bindCommonHeaderEvents();
 
@@ -4711,6 +5179,8 @@
       );
     }
 
+    bindDayFilterEvents();
+
     loadDay(
       selectedDate,
       state.currentPage
@@ -4718,20 +5188,171 @@
   }
 
 
+  function bindDayFilterEvents() {
+    const searchInput =
+      getElement(
+        'ahxSearchInput'
+      );
+
+    const statusFilter =
+      getElement(
+        'ahxStatusFilter'
+      );
+
+    const checkpointFilter =
+      getElement(
+        'ahxCheckpointFilter'
+      );
+
+    const imageFilter =
+      getElement(
+        'ahxImageFilter'
+      );
+
+    const resetButton =
+      getElement(
+        'ahxResetFilters'
+      );
+
+    if (searchInput) {
+      searchInput.value =
+        state.filters.search;
+
+      searchInput.addEventListener(
+        'input',
+        function () {
+          state.filters.search =
+            cleanText(
+              searchInput.value
+            );
+
+          debounceSearch(
+            function () {
+              state.currentPage =
+                1;
+
+              loadDay(
+                state.currentDate,
+                1
+              );
+            }
+          );
+        }
+      );
+    }
+
+    if (statusFilter) {
+      statusFilter.value =
+        state.filters.status;
+
+      statusFilter.addEventListener(
+        'change',
+        function () {
+          state.filters.status =
+            cleanText(
+              statusFilter.value
+            ) ||
+            'ALL';
+
+          state.currentPage =
+            1;
+
+          loadDay(
+            state.currentDate,
+            1
+          );
+        }
+      );
+    }
+
+    if (checkpointFilter) {
+      checkpointFilter.value =
+        state.filters.checkpoint;
+
+      checkpointFilter.addEventListener(
+        'change',
+        function () {
+          state.filters.checkpoint =
+            cleanText(
+              checkpointFilter.value
+            );
+
+          state.currentPage =
+            1;
+
+          loadDay(
+            state.currentDate,
+            1
+          );
+        }
+      );
+    }
+
+    if (imageFilter) {
+      imageFilter.value =
+        state.filters.image;
+
+      imageFilter.addEventListener(
+        'change',
+        function () {
+          state.filters.image =
+            cleanText(
+              imageFilter.value
+            ) ||
+            'ALL';
+
+          state.currentPage =
+            1;
+
+          loadDay(
+            state.currentDate,
+            1
+          );
+        }
+      );
+    }
+
+    if (resetButton) {
+      resetButton.addEventListener(
+        'click',
+        function () {
+          resetDayFilters();
+
+          state.currentPage =
+            1;
+
+          renderDayView(
+            state.currentDate
+          );
+        }
+      );
+    }
+  }
+
+
   async function loadDay(
     selectedDate,
     page
   ) {
-    const records =
+    const grid =
       getElement(
-        'ahxRecordList'
+        'ahxCardGrid'
       );
 
-    if (!records) {
+    const sequence =
+      state.dayLoadSequence +
+      1;
+
+    state.dayLoadSequence =
+      sequence;
+
+    if (!grid) {
       return;
     }
 
-    records.innerHTML =
+    disconnectThumbnailObserver();
+
+    grid.innerHTML =
       loadingHtml(
         'กำลังโหลดข้อมูลรายวัน...'
       );
@@ -4753,8 +5374,27 @@
               page,
 
             pageSize:
-              PAGE_SIZE
+              PAGE_SIZE,
+
+            search:
+              state.filters.search,
+
+            status:
+              state.filters.status,
+
+            checkpoint:
+              state.filters.checkpoint,
+
+            image:
+              state.filters.image
           });
+
+      if (
+        sequence !==
+        state.dayLoadSequence
+      ) {
+        return;
+      }
 
       state.currentPage =
         result.pagination &&
@@ -4762,11 +5402,21 @@
           ? result.pagination.page
           : page;
 
+      state.dayData =
+        result;
+
       renderDayData(
         result
       );
 
     } catch (error) {
+      if (
+        sequence !==
+        state.dayLoadSequence
+      ) {
+        return;
+      }
+
       if (
         handleAuthFailure(
           error
@@ -4775,7 +5425,7 @@
         return;
       }
 
-      records.innerHTML =
+      grid.innerHTML =
         errorHtml(
           cleanText(
             error &&
@@ -4793,14 +5443,9 @@
         'ahxDaySummary'
       );
 
-    const breakdown =
+    const grid =
       getElement(
-        'ahxDayBreakdown'
-      );
-
-    const records =
-      getElement(
-        'ahxRecordList'
+        'ahxCardGrid'
       );
 
     const pagination =
@@ -4808,83 +5453,126 @@
         'ahxPagination'
       );
 
+    const resultBar =
+      getElement(
+        'ahxResultBar'
+      );
+
+    const checkpointFilter =
+      getElement(
+        'ahxCheckpointFilter'
+      );
+
+    if (!summary || !grid) {
+      return;
+    }
+
     const day =
-      data.summary || {};
+      data.filteredSummary ||
+      data.summary ||
+      {};
 
-    if (summary) {
-      summary.innerHTML =
-        summaryCardHtml(
-          'รายการ',
-          day.totalRecords || 0
+    summary.innerHTML =
+      summaryCardHtml(
+        'รายการ',
+        day.totalRecords || 0
+      ) +
+
+      summaryCardHtml(
+        'อนุญาต',
+        day.allowCount || 0,
+        'success'
+      ) +
+
+      summaryCardHtml(
+        'ห้ามเข้า',
+        day.denyCount || 0,
+        'danger'
+      ) +
+
+      summaryCardHtml(
+        'ค่าสูงสุด',
+        formatMg(
+          day.maxValue
         ) +
+        ' Mg%',
 
-        summaryCardHtml(
-          'จำนวนรอบ',
-          day.totalRounds || 0
-        ) +
+        day.denyCount
+          ? 'danger'
+          : ''
+      );
 
-        summaryCardHtml(
-          'อนุญาต',
-          day.allowCount || 0,
-          'success'
-        ) +
+    updateCheckpointOptions(
+      checkpointFilter,
 
-        summaryCardHtml(
-          'ห้ามเข้า',
-          day.denyCount || 0,
-          'danger'
-        ) +
+      data.filterOptions &&
+      data.filterOptions.checkpoints
+    );
 
-        summaryCardHtml(
-          'ค่าสูงสุด',
-          formatMg(
-            day.maxValue
-          ) +
-          ' Mg%'
-        ) +
+    const records =
+      Array.isArray(
+        data.records
+      )
+        ? data.records
+        : [];
 
-        summaryCardHtml(
-          'ภาพพร้อมดู',
-          day.imagesAvailable || 0
-        ) +
-
-        summaryCardHtml(
-          'ภาพถูกลบ',
-          day.imagesDeleted || 0
-        ) +
-
-        summaryCardHtml(
-          'ภาพมีปัญหา',
-          day.imageIssues || 0,
-          'warning'
+    grid.innerHTML =
+      records.length
+        ? records
+          .map(
+            personCardHtml
+          )
+          .join('')
+        : emptyHtml(
+          'ไม่พบข้อมูลตามเงื่อนไขที่เลือก'
         );
-    }
 
-    if (breakdown) {
-      breakdown.innerHTML =
-        breakdownHtml(day);
-    }
+    if (resultBar) {
+      const pageInfo =
+        data.pagination || {};
 
-    if (records) {
-      const list =
-        Array.isArray(
-          data.records
-        )
-          ? data.records
-          : [];
+      resultBar.innerHTML =
+        '<span>' +
+          'พบ <strong>' +
+          finiteNumber(
+            pageInfo.totalRecords,
+            records.length
+          ) +
+          '</strong> รายการ' +
 
-      records.innerHTML =
-        list.length
-          ? list
-            .map(
-              recordHtml
+          (
+            finiteNumber(
+              pageInfo.totalBeforeFilter,
+              0
+            ) !==
+            finiteNumber(
+              pageInfo.totalRecords,
+              0
             )
-            .join('')
-          : emptyHtml(
-            'ไม่พบข้อมูลในวันที่เลือก'
-          );
+              ? (
+                ' จากทั้งหมด ' +
+                finiteNumber(
+                  pageInfo.totalBeforeFilter,
+                  0
+                )
+              )
+              : ''
+          ) +
 
-      bindImageButtons();
+        '</span>' +
+
+        '<span>' +
+          'หน้า ' +
+          finiteNumber(
+            pageInfo.page,
+            1
+          ) +
+          '/' +
+          finiteNumber(
+            pageInfo.totalPages,
+            1
+          ) +
+        '</span>';
     }
 
     if (pagination) {
@@ -4895,182 +5583,158 @@
 
       bindPaginationEvents();
     }
+
+    bindPersonCards();
+    setupThumbnailObserver();
   }
 
 
-  function breakdownHtml(summary) {
-    return (
-      objectChipsHtml(
-        'จุดตรวจ',
-        summary.byCheckpoint
-      ) +
-
-      objectChipsHtml(
-        'ประเภทบุคคล',
-        summary.byPersonType
-      ) +
-
-      (
-        summary.firstTime ||
-        summary.lastTime
-          ? (
-            '<div class="ahx-breakdown-row">' +
-              '<strong>' +
-                'ช่วงเวลาตรวจ' +
-              '</strong>' +
-
-              '<div class="ahx-chip-list">' +
-                '<span class="ahx-chip">' +
-                  escapeHtml(
-                    summary.firstTime ||
-                    '--:--:--'
-                  ) +
-                  ' - ' +
-                  escapeHtml(
-                    summary.lastTime ||
-                    '--:--:--'
-                  ) +
-                '</span>' +
-              '</div>' +
-            '</div>'
-          )
-          : ''
-      )
-    );
-  }
-
-
-  function objectChipsHtml(
-    title,
-    source
+  function updateCheckpointOptions(
+    select,
+    checkpoints
   ) {
-    const entries =
-      source &&
-      typeof source ===
-      'object'
-        ? Object.entries(source)
-        : [];
-
-    if (!entries.length) {
-      return '';
+    if (!select) {
+      return;
     }
 
-    return (
-      '<div class="ahx-breakdown-row">' +
+    const current =
+      state.filters.checkpoint;
 
-        '<strong>' +
-          escapeHtml(title) +
-        '</strong>' +
+    const list =
+      Array.isArray(checkpoints)
+        ? checkpoints
+        : [];
 
-        '<div class="ahx-chip-list">' +
+    select.innerHTML =
+      '<option value="">' +
+        'ทุกจุดตรวจ' +
+      '</option>' +
 
-          entries
-            .map(
-              function (entry) {
-                return (
-                  '<span class="ahx-chip">' +
-                    escapeHtml(
-                      entry[0]
-                    ) +
-                    ' <b>' +
-                    escapeHtml(
-                      entry[1]
-                    ) +
-                    '</b>' +
-                  '</span>'
-                );
-              }
-            )
-            .join('') +
+      list
+        .map(
+          function (item) {
+            return (
+              '<option value="' +
+                escapeAttribute(item) +
+              '">' +
 
-        '</div>' +
+                escapeHtml(item) +
 
-      '</div>'
-    );
+              '</option>'
+            );
+          }
+        )
+        .join('');
+
+    select.value =
+      current;
   }
 
 
-  function metaItemHtml(
-    label,
-    value
-  ) {
-    return (
-      '<div class="ahx-meta-item">' +
+  /************************************************************
+   * Person Card
+   ************************************************************/
 
-        '<small>' +
-          escapeHtml(label) +
-        '</small>' +
-
-        '<strong>' +
-          escapeHtml(
-            value ||
-            '-'
-          ) +
-        '</strong>' +
-
-      '</div>'
-    );
-  }
-
-
-  function valueCardHtml(
-    label,
-    value
-  ) {
-    return (
-      '<div class="ahx-value-card">' +
-
-        escapeHtml(label) +
-
-        '<b>' +
-          escapeHtml(value) +
-        '</b>' +
-
-      '</div>'
-    );
-  }
-
-
-  function recordHtml(record) {
+  function personCardHtml(record) {
     const deny =
       cleanText(
         record.status
       ).toUpperCase() ===
       'DENY';
 
-    const rounds =
-      Array.isArray(
-        record.rounds
-      )
-        ? record.rounds
-        : [];
+    const canView =
+      record.coverCanViewImage ===
+      true &&
+      cleanText(
+        record.coverRoundId
+      );
 
     return (
-      '<article class="ahx-record ' +
-        (
-          deny
-            ? 'deny'
-            : 'allow'
-        ) +
-      '">' +
+      '<article ' +
+        'class="ahx-person-card ' +
+          (
+            deny
+              ? 'deny'
+              : 'allow'
+          ) +
+        '" ' +
+        'data-record-id="' +
+          escapeAttribute(
+            record.recordId
+          ) +
+        '"' +
+      '>' +
 
-        '<div class="ahx-record-head">' +
+        '<div ' +
+          'class="ahx-card-photo ahx-thumb" ' +
+          'data-record-id="' +
+            escapeAttribute(
+              record.recordId
+            ) +
+          '" ' +
+          'data-round-id="' +
+            escapeAttribute(
+              record.coverRoundId ||
+              ''
+            ) +
+          '" ' +
+          'data-can-view="' +
+            (
+              canView
+                ? '1'
+                : '0'
+            ) +
+          '"' +
+        '>' +
 
-          '<div class="ahx-record-person">' +
+          photoPlaceholderHtml(
+            record
+          ) +
 
-            '<span class="ahx-record-time">' +
+          (
+            canView
+              ? (
+                '<button ' +
+                  'type="button" ' +
+                  'class="ahx-photo-open" ' +
+                  'data-open-image="1"' +
+                '>' +
+                  'ดูภาพ' +
+                '</button>'
+              )
+              : ''
+          ) +
+
+        '</div>' +
+
+        '<div class="ahx-card-body">' +
+
+          '<div class="ahx-card-head">' +
+
+            '<div class="ahx-card-identity">' +
+
+              '<h3>' +
+                escapeHtml(
+                  record.personName ||
+                  'ไม่ระบุชื่อ'
+                ) +
+              '</h3>' +
+
+              '<p>' +
+                escapeHtml(
+                  record.personType ||
+                  '-'
+                ) +
+              '</p>' +
+
+            '</div>' +
+
+            '<time class="ahx-card-time">' +
               escapeHtml(
                 record.time ||
                 '--:--:--'
               ) +
-            '</span>' +
-
-            '<strong class="ahx-record-name">' +
-              escapeHtml(
-                record.personName ||
-                'ไม่ระบุชื่อ'
-              ) +
-            '</strong>' +
+            '</time>' +
 
           '</div>' +
 
@@ -5093,129 +5757,97 @@
 
           '</span>' +
 
-        '</div>' +
+          '<div class="ahx-card-lines">' +
 
+            '<div class="ahx-card-line">' +
+              '<span>📍</span>' +
 
-        '<div class="ahx-record-meta">' +
+              '<b>' +
+                escapeHtml(
+                  record.checkpoint ||
+                  '-'
+                ) +
+              '</b>' +
+            '</div>' +
 
-          metaItemHtml(
-            'ประเภทบุคคล',
-            record.personType
-          ) +
+            '<div class="ahx-card-line">' +
+              '<span>👤</span>' +
 
-          metaItemHtml(
-            record.organizationType ||
-            'บริษัท/สายรถ',
+              '<b>' +
+                'ผู้ตรวจ: ' +
+                escapeHtml(
+                  record.inspector ||
+                  '-'
+                ) +
+              '</b>' +
+            '</div>' +
 
-            record.organizationValue
-          ) +
-
-          metaItemHtml(
-            'จุดตรวจ',
-            record.checkpoint
-          ) +
-
-          metaItemHtml(
-            'ผู้ตรวจวัด',
-            record.inspector
-          ) +
-
-        '</div>' +
-
-
-        '<div class="ahx-value-grid">' +
-
-          valueCardHtml(
-            'จำนวนรอบ',
-            String(
-              record.roundCount ||
-              0
-            )
-          ) +
-
-          valueCardHtml(
-            'ครั้งแรก',
-            formatMg(
-              record.firstValueMg
-            )
-          ) +
-
-          valueCardHtml(
-            'ล่าสุด',
-            formatMg(
-              record.lastValueMg
-            )
-          ) +
-
-          valueCardHtml(
-            'สูงสุด Mg%',
-            formatMg(
-              record.maxValueMg
-            )
-          ) +
-
-        '</div>' +
-
-
-        '<div class="ahx-image-status">' +
-
-          '<strong>' +
-            escapeHtml(
-              record.imageStatusText ||
-              'ไม่ทราบสถานะภาพ'
-            ) +
-          '</strong>' +
-
-          '<small>' +
-
-            escapeHtml(
-              record.imageDeletedAt
+            (
+              record.organizationValue
                 ? (
-                  'ดำเนินการ ' +
-                  record.imageDeletedAt
+                  '<div class="ahx-card-line">' +
+                    '<span>🏢</span>' +
+
+                    '<b>' +
+                      escapeHtml(
+                        record.organizationValue
+                      ) +
+                    '</b>' +
+                  '</div>'
                 )
-                : (
-                  record.imageExpireAt
-                    ? (
-                      'กำหนดลบ ' +
-                      record.imageExpireAt
-                    )
-                    : ''
-                )
+                : ''
             ) +
 
-          '</small>' +
+          '</div>' +
 
-        '</div>' +
+          '<div class="ahx-card-values">' +
 
-
-        '<div class="ahx-round-list">' +
-
-          (
-            rounds.length
-              ? rounds
-                .map(
-                  function (round) {
-                    return roundHtml(
-                      record.recordId,
-                      round
-                    );
-                  }
-                )
-                .join('')
-              : emptyHtml(
-                'ไม่พบรายละเอียดรอบตรวจ'
+            cardValueHtml(
+              'ล่าสุด',
+              formatMg(
+                record.lastValueMg
               )
-          ) +
+            ) +
 
-        '</div>' +
+            cardValueHtml(
+              'สูงสุด',
+              formatMg(
+                record.maxValueMg
+              ),
+              'max'
+            ) +
 
+            cardValueHtml(
+              'จำนวนรอบ',
+              String(
+                record.roundCount ||
+                0
+              )
+            ) +
 
-        '<div class="ahx-record-id">' +
-          escapeHtml(
-            record.recordId ||
-            ''
-          ) +
+          '</div>' +
+
+          '<div class="ahx-card-foot">' +
+
+            '<span class="ahx-card-image-state">' +
+
+              escapeHtml(
+                record.coverImageStatusText ||
+                record.imageStatusText ||
+                'ไม่ทราบสถานะภาพ'
+              ) +
+
+            '</span>' +
+
+            '<button ' +
+              'type="button" ' +
+              'class="ahx-detail-button"' +
+            '>' +
+              'ดูรายละเอียด ›' +
+            '</button>' +
+
+          '</div>' +
+
         '</div>' +
 
       '</article>'
@@ -5223,130 +5855,200 @@
   }
 
 
-  function roundHtml(
-    recordId,
-    round
+  function cardValueHtml(
+    label,
+    value,
+    extraClass
   ) {
-    const detailDate =
-      cleanText(
-        round.measuredAt
-      );
-
-    const deletedOrExpire =
-      round.imageDeletedAt
-        ? (
-          'ลบเมื่อ ' +
-          round.imageDeletedAt
-        )
-        : (
-          round.imageExpireAt
-            ? (
-              'กำหนดลบ ' +
-              round.imageExpireAt
-            )
-            : ''
-        );
-
     return (
-      '<div class="ahx-round">' +
-
-        '<div class="ahx-round-main">' +
-
-          '<strong>' +
-            'รอบ ' +
-            escapeHtml(
-              round.roundNumber ||
-              '-'
-            ) +
-          '</strong>' +
-
-          '<b>' +
-            formatMg(
-              round.valueMg
-            ) +
-            ' Mg%' +
-          '</b>' +
-
-          '<small>' +
-            escapeHtml(
-              detailDate
-            ) +
-          '</small>' +
-
-        '</div>' +
-
-
-        '<div class="ahx-round-photo">' +
-
-          '<strong>' +
-            escapeHtml(
-              round.imageStatusText ||
-              'ไม่ทราบสถานะภาพ'
-            ) +
-          '</strong>' +
-
-          '<small>' +
-            escapeHtml(
-              deletedOrExpire
-            ) +
-          '</small>' +
-
-        '</div>' +
-
-
-        (
-          round.canViewImage ===
-          true
-            ? (
-              '<button ' +
-                'type="button" ' +
-                'class="ahx-view-image" ' +
-                'data-record-id="' +
-                  escapeAttribute(
-                    recordId
-                  ) +
-                '" ' +
-                'data-round-id="' +
-                  escapeAttribute(
-                    round.roundId
-                  ) +
-                '"' +
-              '>' +
-                'ดูภาพ' +
-              '</button>'
-            )
-            : (
-              '<span class="ahx-no-image">' +
-                'ไม่มีภาพ' +
-              '</span>'
-            )
+      '<div class="ahx-card-value ' +
+        escapeAttribute(
+          extraClass ||
+          ''
         ) +
+      '">' +
+
+        escapeHtml(label) +
+
+        '<strong>' +
+          escapeHtml(value) +
+        '</strong>' +
 
       '</div>'
     );
   }
 
 
-  function bindImageButtons() {
+  function photoPlaceholderHtml(record) {
+    const status =
+      cleanText(
+        record.coverImageStatus ||
+        record.imageStatus
+      ).toUpperCase();
+
+    const statusText =
+      cleanText(
+        record.coverImageStatusText ||
+        record.imageStatusText
+      );
+
+    const deletedAt =
+      cleanText(
+        record.coverImageDeletedAt ||
+        record.imageDeletedAt
+      );
+
+    const canView =
+      record.coverCanViewImage ===
+      true &&
+      cleanText(
+        record.coverRoundId
+      );
+
+    if (canView) {
+      return (
+        '<div class="ahx-photo-placeholder">' +
+          '<span class="icon">' +
+            '🖼️' +
+          '</span>' +
+
+          '<strong>' +
+            'กำลังโหลดภาพ' +
+          '</strong>' +
+
+          '<small>' +
+            'แตะเพื่อดูภาพขนาดเต็ม' +
+          '</small>' +
+        '</div>'
+      );
+    }
+
+    if (
+      [
+        'DELETED',
+        'PERMANENTLY_DELETED',
+        'TRASHED'
+      ].includes(status)
+    ) {
+      return (
+        '<div class="ahx-photo-placeholder deleted">' +
+          '<span class="icon">' +
+            '🗑️' +
+          '</span>' +
+
+          '<strong>' +
+            'รูปภาพถูกลบแล้ว' +
+          '</strong>' +
+
+          '<small>' +
+            escapeHtml(
+              deletedAt ||
+              statusText
+            ) +
+          '</small>' +
+        '</div>'
+      );
+    }
+
+    if (
+      [
+        'FAILED',
+        'PARTIAL_FAILED',
+        'MISSING',
+        'NO_FILE_ID'
+      ].includes(status)
+    ) {
+      return (
+        '<div class="ahx-photo-placeholder issue">' +
+          '<span class="icon">' +
+            '⚠️' +
+          '</span>' +
+
+          '<strong>' +
+            'ไม่สามารถแสดงภาพ' +
+          '</strong>' +
+
+          '<small>' +
+            escapeHtml(
+              statusText ||
+              'ข้อมูลการตรวจยังอยู่ครบ'
+            ) +
+          '</small>' +
+        '</div>'
+      );
+    }
+
+    return (
+      '<div class="ahx-photo-placeholder">' +
+        '<span class="icon">' +
+          '👤' +
+        '</span>' +
+
+        '<strong>' +
+          'ไม่มีภาพตัวอย่าง' +
+        '</strong>' +
+
+        '<small>' +
+          escapeHtml(
+            statusText ||
+            'กดรายละเอียดเพื่อดูข้อมูล'
+          ) +
+        '</small>' +
+      '</div>'
+    );
+  }
+
+
+  function bindPersonCards() {
     document
       .querySelectorAll(
-        '.ahx-view-image'
+        '.ahx-person-card'
       )
       .forEach(
-        function (button) {
-          button.addEventListener(
+        function (card) {
+          card.addEventListener(
             'click',
-            function () {
-              openProtectedImage(
+            function (event) {
+              const recordId =
                 cleanText(
-                  button.dataset
+                  card.dataset
                     .recordId
-                ),
+                );
 
-                cleanText(
-                  button.dataset
-                    .roundId
+              if (!recordId) {
+                return;
+              }
+
+              if (
+                event.target &&
+                event.target.closest(
+                  '[data-open-image="1"]'
                 )
+              ) {
+                const thumb =
+                  card.querySelector(
+                    '.ahx-thumb'
+                  );
+
+                if (thumb) {
+                  openProtectedImage(
+                    cleanText(
+                      thumb.dataset
+                        .recordId
+                    ),
+
+                    cleanText(
+                      thumb.dataset
+                        .roundId
+                    )
+                  );
+                }
+
+                return;
+              }
+
+              openRecordDetail(
+                recordId
               );
             }
           );
@@ -5355,9 +6057,326 @@
   }
 
 
-  function paginationHtml(
-    pagination
+  /************************************************************
+   * Thumbnail
+   ************************************************************/
+
+  function setupThumbnailObserver() {
+    disconnectThumbnailObserver();
+
+    const targets =
+      Array.from(
+        document.querySelectorAll(
+          '.ahx-thumb[data-can-view="1"]'
+        )
+      );
+
+    if (!targets.length) {
+      return;
+    }
+
+    if (
+      !(
+        'IntersectionObserver'
+        in window
+      )
+    ) {
+      targets.forEach(
+        loadThumbnailForElement
+      );
+
+      return;
+    }
+
+    state.thumbnailObserver =
+      new IntersectionObserver(
+        function (
+          entries,
+          observer
+        ) {
+          entries.forEach(
+            function (entry) {
+              if (!entry.isIntersecting) {
+                return;
+              }
+
+              observer.unobserve(
+                entry.target
+              );
+
+              loadThumbnailForElement(
+                entry.target
+              );
+            }
+          );
+        },
+
+        {
+          rootMargin:
+            '220px 0px'
+        }
+      );
+
+    targets.forEach(
+      function (target) {
+        state.thumbnailObserver
+          .observe(target);
+      }
+    );
+  }
+
+
+  function disconnectThumbnailObserver() {
+    if (
+      state.thumbnailObserver
+    ) {
+      state.thumbnailObserver
+        .disconnect();
+
+      state.thumbnailObserver =
+        null;
+    }
+  }
+
+
+  function thumbnailCacheKey(
+    recordId,
+    roundId
   ) {
+    return (
+      recordId +
+      '::' +
+      roundId
+    );
+  }
+
+
+  function putThumbnailCache(
+    key,
+    dataUrl
+  ) {
+    if (
+      state.thumbnailCache
+        .has(key)
+    ) {
+      state.thumbnailCache
+        .delete(key);
+    }
+
+    state.thumbnailCache
+      .set(
+        key,
+        dataUrl
+      );
+
+    while (
+      state.thumbnailCache.size >
+      THUMBNAIL_CACHE_LIMIT
+    ) {
+      const firstKey =
+        state.thumbnailCache
+          .keys()
+          .next()
+          .value;
+
+      state.thumbnailCache
+        .delete(
+          firstKey
+        );
+    }
+  }
+
+
+  async function loadThumbnailForElement(
+    element
+  ) {
+    const recordId =
+      cleanText(
+        element.dataset
+          .recordId
+      );
+
+    const roundId =
+      cleanText(
+        element.dataset
+          .roundId
+      );
+
+    if (
+      !recordId ||
+      !roundId ||
+      !API ||
+      typeof API.historyThumbnail !==
+        'function'
+    ) {
+      return;
+    }
+
+    const key =
+      thumbnailCacheKey(
+        recordId,
+        roundId
+      );
+
+    const cached =
+      state.thumbnailCache
+        .get(key);
+
+    if (cached) {
+      renderThumbnail(
+        element,
+        cached
+      );
+
+      return;
+    }
+
+    try {
+      const result =
+        await API
+          .historyThumbnail({
+            token:
+              state.token,
+
+            deviceId:
+              getDeviceId(),
+
+            recordId:
+              recordId,
+
+            roundId:
+              roundId
+          });
+
+      if (!element.isConnected) {
+        return;
+      }
+
+      if (
+        result.available &&
+        result.dataUrl
+      ) {
+        putThumbnailCache(
+          key,
+          result.dataUrl
+        );
+
+        renderThumbnail(
+          element,
+          result.dataUrl
+        );
+
+      } else {
+        const placeholder =
+          element.querySelector(
+            '.ahx-photo-placeholder'
+          );
+
+        if (placeholder) {
+          placeholder.className =
+            'ahx-photo-placeholder issue';
+
+          placeholder.innerHTML =
+            '<span class="icon">' +
+              '⚠️' +
+            '</span>' +
+
+            '<strong>' +
+              'ไม่พบภาพตัวอย่าง' +
+            '</strong>' +
+
+            '<small>' +
+              escapeHtml(
+                result.imageStatusText ||
+                ''
+              ) +
+            '</small>';
+        }
+      }
+
+    } catch (error) {
+      if (
+        handleAuthFailure(
+          error
+        )
+      ) {
+        return;
+      }
+
+      const placeholder =
+        element.querySelector(
+          '.ahx-photo-placeholder'
+        );
+
+      if (placeholder) {
+        placeholder.className =
+          'ahx-photo-placeholder issue';
+
+        placeholder.innerHTML =
+          '<span class="icon">' +
+            '⚠️' +
+          '</span>' +
+
+          '<strong>' +
+            'โหลดภาพไม่สำเร็จ' +
+          '</strong>' +
+
+          '<small>' +
+            'กดดูรายละเอียดเพื่อทดลองใหม่' +
+          '</small>';
+      }
+    }
+  }
+
+
+  function renderThumbnail(
+    element,
+    dataUrl
+  ) {
+    const oldImage =
+      element.querySelector(
+        'img'
+      );
+
+    if (oldImage) {
+      oldImage.remove();
+    }
+
+    const image =
+      document.createElement(
+        'img'
+      );
+
+    image.alt =
+      'ภาพผู้ถูกตรวจที่เบลอแล้ว';
+
+    image.loading =
+      'lazy';
+
+    image.src =
+      dataUrl;
+
+    const placeholder =
+      element.querySelector(
+        '.ahx-photo-placeholder'
+      );
+
+    if (placeholder) {
+      placeholder.remove();
+    }
+
+    element.insertBefore(
+      image,
+      element.firstChild
+    );
+  }
+
+
+  /************************************************************
+   * Pagination
+   ************************************************************/
+
+  function paginationHtml(pagination) {
     const page =
       Math.max(
         1,
@@ -5422,18 +6441,18 @@
 
 
   function bindPaginationEvents() {
-    const previousButton =
+    const previous =
       getElement(
         'ahxPreviousPage'
       );
 
-    const nextButton =
+    const next =
       getElement(
         'ahxNextPage'
       );
 
-    if (previousButton) {
-      previousButton.addEventListener(
+    if (previous) {
+      previous.addEventListener(
         'click',
         function () {
           if (
@@ -5452,8 +6471,8 @@
       );
     }
 
-    if (nextButton) {
-      nextButton.addEventListener(
+    if (next) {
+      next.addEventListener(
         'click',
         function () {
           state.currentPage +=
@@ -5470,14 +6489,691 @@
 
 
   /************************************************************
-   * Protected Image
+   * Record Detail
    ************************************************************/
 
-  async function openProtectedImage(
-    recordId,
-    roundId
+  async function openRecordDetail(recordId) {
+    if (
+      !recordId ||
+      !API ||
+      typeof API.historyRecord !==
+        'function'
+    ) {
+      showGeneralError(
+        new Error(
+          'ระบบยังไม่รองรับการโหลดรายละเอียดรายการ'
+        )
+      );
+
+      return;
+    }
+
+    closeOverlay();
+
+    const overlay =
+      createOverlay(
+        'รายละเอียดการตรวจวัด',
+        false
+      );
+
+    const body =
+      overlay.querySelector(
+        '.ahx-dialog-body'
+      );
+
+    body.innerHTML =
+      loadingHtml(
+        'กำลังโหลดรายละเอียด...'
+      );
+
+    try {
+      const result =
+        await API
+          .historyRecord({
+            token:
+              state.token,
+
+            deviceId:
+              getDeviceId(),
+
+            recordId:
+              recordId
+          });
+
+      if (!overlay.isConnected) {
+        return;
+      }
+
+      const record =
+        result.record || {};
+
+      body.innerHTML =
+        recordDetailHtml(
+          record
+        );
+
+      bindDetailEvents(
+        record
+      );
+
+      loadDetailCover(
+        record
+      );
+
+    } catch (error) {
+      if (
+        handleAuthFailure(
+          error
+        )
+      ) {
+        return;
+      }
+
+      if (body) {
+        body.innerHTML =
+          errorHtml(
+            cleanText(
+              error &&
+              error.message
+            ) ||
+            'โหลดรายละเอียดไม่สำเร็จ'
+          );
+      }
+    }
+  }
+
+
+  function recordDetailHtml(record) {
+    const deny =
+      cleanText(
+        record.status
+      ).toUpperCase() ===
+      'DENY';
+
+    const rounds =
+      Array.isArray(
+        record.rounds
+      )
+        ? record.rounds
+        : [];
+
+    const cover =
+      pickCoverRound(
+        rounds
+      );
+
+    return (
+      '<div class="ahx-detail-layout">' +
+
+        '<div ' +
+          'id="ahxDetailPhoto" ' +
+          'class="ahx-detail-photo" ' +
+          'data-record-id="' +
+            escapeAttribute(
+              record.recordId ||
+              ''
+            ) +
+          '" ' +
+          'data-round-id="' +
+            escapeAttribute(
+              cover
+                ? cover.roundId
+                : ''
+            ) +
+          '"' +
+        '>' +
+
+          detailPhotoPlaceholderHtml(
+            record,
+            cover
+          ) +
+
+        '</div>' +
+
+        '<div class="ahx-detail-content">' +
+
+          '<div class="ahx-detail-title">' +
+
+            '<div>' +
+              '<h3>' +
+                escapeHtml(
+                  record.personName ||
+                  'ไม่ระบุชื่อ'
+                ) +
+              '</h3>' +
+
+              '<p>' +
+                escapeHtml(
+                  record.dateTime ||
+                  ''
+                ) +
+              '</p>' +
+            '</div>' +
+
+            '<span class="ahx-status-badge ' +
+              (
+                deny
+                  ? 'deny'
+                  : 'allow'
+              ) +
+            '">' +
+
+              escapeHtml(
+                record.statusMessage ||
+                (
+                  deny
+                    ? 'ห้ามเข้าพื้นที่'
+                    : 'อนุญาต'
+                )
+              ) +
+
+            '</span>' +
+
+          '</div>' +
+
+          '<div class="ahx-detail-meta">' +
+
+            detailMetaHtml(
+              'ประเภทบุคคล',
+              record.personType
+            ) +
+
+            detailMetaHtml(
+              record.organizationType ||
+              'บริษัท/สายรถ',
+
+              record.organizationValue
+            ) +
+
+            detailMetaHtml(
+              'จุดตรวจ',
+              record.checkpoint
+            ) +
+
+            detailMetaHtml(
+              'ผู้ตรวจวัด',
+              record.inspector
+            ) +
+
+          '</div>' +
+
+          '<div class="ahx-detail-values">' +
+
+            detailValueHtml(
+              'จำนวนรอบ',
+              record.roundCount ||
+              0
+            ) +
+
+            detailValueHtml(
+              'ครั้งแรก',
+              formatMg(
+                record.firstValueMg
+              )
+            ) +
+
+            detailValueHtml(
+              'ล่าสุด',
+              formatMg(
+                record.lastValueMg
+              )
+            ) +
+
+            detailValueHtml(
+              'สูงสุด Mg%',
+              formatMg(
+                record.maxValueMg
+              )
+            ) +
+
+          '</div>' +
+
+          '<div class="ahx-image-status">' +
+
+            '<strong>' +
+              escapeHtml(
+                record.imageStatusText ||
+                'ไม่ทราบสถานะภาพ'
+              ) +
+            '</strong>' +
+
+            '<small>' +
+
+              escapeHtml(
+                record.imageDeletedAt
+                  ? (
+                    'ดำเนินการ ' +
+                    record.imageDeletedAt
+                  )
+                  : (
+                    record.imageExpireAt
+                      ? (
+                        'กำหนดลบ ' +
+                        record.imageExpireAt
+                      )
+                      : ''
+                  )
+              ) +
+
+            '</small>' +
+
+          '</div>' +
+
+          '<div class="ahx-round-list">' +
+
+            (
+              rounds.length
+                ? rounds
+                  .map(
+                    function (round) {
+                      return roundRowHtml(
+                        record.recordId,
+                        round
+                      );
+                    }
+                  )
+                  .join('')
+                : emptyHtml(
+                  'ไม่พบรายละเอียดรอบตรวจ'
+                )
+            ) +
+
+          '</div>' +
+
+          '<div class="ahx-record-id">' +
+            escapeHtml(
+              record.recordId ||
+              ''
+            ) +
+          '</div>' +
+
+        '</div>' +
+
+      '</div>'
+    );
+  }
+
+
+  function pickCoverRound(rounds) {
+    if (
+      !Array.isArray(rounds) ||
+      !rounds.length
+    ) {
+      return null;
+    }
+
+    for (
+      let index =
+        rounds.length -
+        1;
+
+      index >= 0;
+
+      index -= 1
+    ) {
+      if (
+        rounds[index]
+          .canViewImage ===
+        true
+      ) {
+        return rounds[index];
+      }
+    }
+
+    return rounds[
+      rounds.length -
+      1
+    ];
+  }
+
+
+  function detailPhotoPlaceholderHtml(
+    record,
+    cover
   ) {
-    closeImageOverlay();
+    if (
+      cover &&
+      cover.canViewImage ===
+      true
+    ) {
+      return (
+        '<div class="ahx-photo-placeholder">' +
+          '<span class="icon">' +
+            '🖼️' +
+          '</span>' +
+
+          '<strong>' +
+            'กำลังโหลดภาพ' +
+          '</strong>' +
+
+          '<small>' +
+            'ภาพที่เบลอแล้ว' +
+          '</small>' +
+        '</div>'
+      );
+    }
+
+    const statusText =
+      cover &&
+      cover.imageStatusText
+        ? cover.imageStatusText
+        : record.imageStatusText;
+
+    return (
+      '<div class="ahx-photo-placeholder deleted">' +
+        '<span class="icon">' +
+          '🗑️' +
+        '</span>' +
+
+        '<strong>' +
+          'ไม่มีภาพสำหรับแสดง' +
+        '</strong>' +
+
+        '<small>' +
+          escapeHtml(
+            statusText ||
+            ''
+          ) +
+        '</small>' +
+      '</div>'
+    );
+  }
+
+
+  function detailMetaHtml(
+    label,
+    value
+  ) {
+    return (
+      '<div>' +
+        '<small>' +
+          escapeHtml(label) +
+        '</small>' +
+
+        '<strong>' +
+          escapeHtml(
+            value ||
+            '-'
+          ) +
+        '</strong>' +
+      '</div>'
+    );
+  }
+
+
+  function detailValueHtml(
+    label,
+    value
+  ) {
+    return (
+      '<div>' +
+        escapeHtml(label) +
+
+        '<strong>' +
+          escapeHtml(value) +
+        '</strong>' +
+      '</div>'
+    );
+  }
+
+
+  function roundRowHtml(
+    recordId,
+    round
+  ) {
+    return (
+      '<div class="ahx-round-row">' +
+
+        '<strong>' +
+          'รอบ ' +
+          escapeHtml(
+            round.roundNumber ||
+            '-'
+          ) +
+        '</strong>' +
+
+        '<b>' +
+          formatMg(
+            round.valueMg
+          ) +
+          ' Mg%' +
+        '</b>' +
+
+        '<small>' +
+          escapeHtml(
+            round.measuredAt ||
+            round.imageStatusText ||
+            ''
+          ) +
+        '</small>' +
+
+        (
+          round.canViewImage ===
+          true
+            ? (
+              '<button ' +
+                'type="button" ' +
+                'class="ahx-round-image-button" ' +
+                'data-record-id="' +
+                  escapeAttribute(
+                    recordId
+                  ) +
+                '" ' +
+                'data-round-id="' +
+                  escapeAttribute(
+                    round.roundId
+                  ) +
+                '"' +
+              '>' +
+                'ดูภาพ' +
+              '</button>'
+            )
+            : (
+              '<span class="ahx-no-image">' +
+                'ไม่มีภาพ' +
+              '</span>'
+            )
+        ) +
+
+      '</div>'
+    );
+  }
+
+
+  function bindDetailEvents(record) {
+    document
+      .querySelectorAll(
+        '.ahx-round-image-button'
+      )
+      .forEach(
+        function (button) {
+          button.addEventListener(
+            'click',
+            function () {
+              openProtectedImage(
+                cleanText(
+                  button.dataset
+                    .recordId
+                ),
+
+                cleanText(
+                  button.dataset
+                    .roundId
+                )
+              );
+            }
+          );
+        }
+      );
+
+    const cover =
+      pickCoverRound(
+        Array.isArray(
+          record.rounds
+        )
+          ? record.rounds
+          : []
+      );
+
+    const photo =
+      getElement(
+        'ahxDetailPhoto'
+      );
+
+    if (
+      photo &&
+      cover &&
+      cover.canViewImage ===
+      true
+    ) {
+      photo.style.cursor =
+        'pointer';
+
+      photo.addEventListener(
+        'click',
+        function () {
+          openProtectedImage(
+            record.recordId,
+            cover.roundId
+          );
+        }
+      );
+    }
+  }
+
+
+  async function loadDetailCover(record) {
+    const photo =
+      getElement(
+        'ahxDetailPhoto'
+      );
+
+    if (!photo) {
+      return;
+    }
+
+    const rounds =
+      Array.isArray(
+        record.rounds
+      )
+        ? record.rounds
+        : [];
+
+    const cover =
+      pickCoverRound(
+        rounds
+      );
+
+    if (
+      !cover ||
+      cover.canViewImage !==
+      true ||
+      typeof API.historyThumbnail !==
+      'function'
+    ) {
+      return;
+    }
+
+    const key =
+      thumbnailCacheKey(
+        record.recordId,
+        cover.roundId
+      );
+
+    const cached =
+      state.thumbnailCache
+        .get(key);
+
+    if (cached) {
+      renderDetailImage(
+        photo,
+        cached
+      );
+
+      return;
+    }
+
+    try {
+      const result =
+        await API
+          .historyThumbnail({
+            token:
+              state.token,
+
+            deviceId:
+              getDeviceId(),
+
+            recordId:
+              record.recordId,
+
+            roundId:
+              cover.roundId
+          });
+
+      if (!photo.isConnected) {
+        return;
+      }
+
+      if (
+        result.available &&
+        result.dataUrl
+      ) {
+        putThumbnailCache(
+          key,
+          result.dataUrl
+        );
+
+        renderDetailImage(
+          photo,
+          result.dataUrl
+        );
+      }
+
+    } catch (error) {
+      if (
+        handleAuthFailure(
+          error
+        )
+      ) {
+        return;
+      }
+    }
+  }
+
+
+  function renderDetailImage(
+    container,
+    dataUrl
+  ) {
+    container.innerHTML =
+      '';
+
+    const image =
+      document.createElement(
+        'img'
+      );
+
+    image.alt =
+      'ภาพผู้ถูกตรวจที่เบลอแล้ว';
+
+    image.src =
+      dataUrl;
+
+    container.appendChild(
+      image
+    );
+  }
+
+
+  /************************************************************
+   * Overlay
+   ************************************************************/
+
+  function createOverlay(
+    title,
+    dark
+  ) {
+    closeOverlay();
 
     const overlay =
       document.createElement(
@@ -5485,44 +7181,41 @@
       );
 
     overlay.id =
-      'ahxImageOverlay';
+      'ahxOverlay';
 
     overlay.className =
-      'ahx-image-overlay';
+      'ahx-overlay';
 
     overlay.innerHTML =
       '<div ' +
-        'class="ahx-image-dialog" ' +
+        'class="ahx-dialog ' +
+          (
+            dark
+              ? 'dark'
+              : ''
+          ) +
+        '" ' +
         'role="dialog" ' +
         'aria-modal="true"' +
       '>' +
 
-        '<div class="ahx-image-head">' +
+        '<div class="ahx-dialog-head">' +
 
           '<strong>' +
-            'ภาพหลักฐานที่เบลอแล้ว' +
+            escapeHtml(title) +
           '</strong>' +
 
           '<button ' +
-            'id="ahxImageClose" ' +
+            'id="ahxOverlayClose" ' +
             'type="button" ' +
-            'aria-label="ปิดภาพ"' +
+            'aria-label="ปิด"' +
           '>' +
             '×' +
           '</button>' +
 
         '</div>' +
 
-        '<div ' +
-          'id="ahxImageBody" ' +
-          'class="ahx-image-body"' +
-        '>' +
-
-          loadingHtml(
-            'กำลังโหลดภาพ...'
-          ) +
-
-        '</div>' +
+        '<div class="ahx-dialog-body"></div>' +
 
       '</div>';
 
@@ -5531,22 +7224,12 @@
         overlay
       );
 
-    const closeButton =
-      getElement(
-        'ahxImageClose'
-      );
-
-    const body =
-      getElement(
-        'ahxImageBody'
-      );
-
-    if (closeButton) {
-      closeButton.addEventListener(
-        'click',
-        closeImageOverlay
-      );
-    }
+    getElement(
+      'ahxOverlayClose'
+    ).addEventListener(
+      'click',
+      closeOverlay
+    );
 
     overlay.addEventListener(
       'click',
@@ -5555,10 +7238,57 @@
           event.target ===
           overlay
         ) {
-          closeImageOverlay();
+          closeOverlay();
         }
       }
     );
+
+    return overlay;
+  }
+
+
+  function closeOverlay() {
+    const overlay =
+      getElement(
+        'ahxOverlay'
+      );
+
+    if (overlay) {
+      overlay.remove();
+    }
+  }
+
+
+  /************************************************************
+   * Full Image
+   ************************************************************/
+
+  async function openProtectedImage(
+    recordId,
+    roundId
+  ) {
+    if (
+      !recordId ||
+      !roundId
+    ) {
+      return;
+    }
+
+    const overlay =
+      createOverlay(
+        'ภาพหลักฐานที่เบลอแล้ว',
+        true
+      );
+
+    const body =
+      overlay.querySelector(
+        '.ahx-dialog-body'
+      );
+
+    body.innerHTML =
+      loadingHtml(
+        'กำลังโหลดภาพ...'
+      );
 
     try {
       const result =
@@ -5577,7 +7307,7 @@
               roundId
           });
 
-      if (!body) {
+      if (!overlay.isConnected) {
         return;
       }
 
@@ -5589,26 +7319,10 @@
           emptyHtml(
             result.imageStatusText ||
             'ภาพนี้ไม่พร้อมแสดง'
-          ) +
-
-          (
-            result.imageDeletedAt
-              ? (
-                '<div class="ahx-image-caption">' +
-                  'วันที่ดำเนินการ: ' +
-                  escapeHtml(
-                    result.imageDeletedAt
-                  ) +
-                '</div>'
-              )
-              : ''
           );
 
         return;
       }
-
-      state.imageDataUrl =
-        result.dataUrl;
 
       body.innerHTML =
         '';
@@ -5654,62 +7368,32 @@
         return;
       }
 
-      if (body) {
-        body.innerHTML =
-          errorHtml(
-            cleanText(
-              error &&
-              error.message
-            ) ||
-            'ไม่สามารถโหลดภาพได้'
-          );
-      }
+      body.innerHTML =
+        errorHtml(
+          cleanText(
+            error &&
+            error.message
+          ) ||
+          'ไม่สามารถโหลดภาพได้'
+        );
     }
-  }
-
-
-  function closeImageOverlay() {
-    const overlay =
-      getElement(
-        'ahxImageOverlay'
-      );
-
-    if (overlay) {
-      overlay.remove();
-    }
-
-    releaseImageData();
-  }
-
-
-  function releaseImageData() {
-    const image =
-      document.querySelector(
-        '#ahxImageOverlay img'
-      );
-
-    if (image) {
-      image.removeAttribute(
-        'src'
-      );
-    }
-
-    state.imageDataUrl =
-      '';
   }
 
 
   /************************************************************
-   * Auth Failure / Logout
+   * Authentication Failure / Logout
    ************************************************************/
 
   function handleAuthFailure(error) {
-    if (!isAuthError(error)) {
+    if (
+      !isAuthError(error)
+    ) {
       return false;
     }
 
     clearSession();
-    closeImageOverlay();
+    disconnectThumbnailObserver();
+    closeOverlay();
 
     getSwal().close();
 
@@ -5751,7 +7435,8 @@
     }
 
     clearSession();
-    closeImageOverlay();
+    disconnectThumbnailObserver();
+    closeOverlay();
 
     Swal.close();
 
@@ -5772,7 +7457,7 @@
 
 
   /************************************************************
-   * State Messages
+   * UI State
    ************************************************************/
 
   function loadingHtml(message) {
@@ -5823,9 +7508,7 @@
   }
 
 
-  async function showGeneralError(
-    error
-  ) {
+  async function showGeneralError(error) {
     const message =
       cleanText(
         error &&
@@ -5913,8 +7596,8 @@
         false
       );
 
-      closeImageOverlay();
-
+      disconnectThumbnailObserver();
+      closeOverlay();
       resumeCamera();
     }
   }
@@ -5972,3 +7655,4 @@
     });
 
 })(window, document);
+
