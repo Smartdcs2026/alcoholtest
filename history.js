@@ -8177,9 +8177,6 @@ loadSession();
       clearSession:
         clearSession
     });
-
-})(window, document);
-
 function injectMonthlyRedesignStyles() {
   const styleId =
     'alcoholHistoryMonthV4Styles';
@@ -9492,3 +9489,6 @@ function injectMonthlyRedesignStyles() {
       style
     );
 }
+
+})(window, document);
+
