@@ -1344,19 +1344,61 @@
         )
       );
 
-    body.pageSize =
-      Math.min(
-        100,
-        Math.max(
-          1,
-          Math.floor(
-            Number(
-              body.pageSize
-            ) ||
-            20
-          )
-        )
-      );
+   body.page =
+  Math.max(
+    1,
+
+    Math.floor(
+      Number(
+        body.page
+      ) ||
+      1
+    )
+  );
+
+body.pageSize =
+  Math.min(
+    30,
+
+    Math.max(
+      1,
+
+      Math.floor(
+        Number(
+          body.pageSize
+        ) ||
+        10
+      )
+    )
+  );
+
+body.search =
+  cleanText(
+    body.search
+  ).substring(
+    0,
+    200
+  );
+
+body.status =
+  cleanText(
+    body.status ||
+    'ALL'
+  ).toUpperCase();
+
+body.checkpoint =
+  cleanText(
+    body.checkpoint
+  ).substring(
+    0,
+    200
+  );
+
+body.image =
+  cleanText(
+    body.image ||
+    'ALL'
+  ).toUpperCase();
 
     return request(
       'api/history/day',
@@ -1380,6 +1422,96 @@
   /************************************************************
    * History Image
    ************************************************************/
+  async function historyRecord(
+  payload
+) {
+  const body =
+    historyPayload(
+      payload,
+      true
+    );
+
+
+  if (
+    !cleanText(
+      body.recordId
+    )
+  ) {
+    throw new AlcoholAPIError(
+      'ไม่พบ Record ID',
+      'RECORD_REFERENCE_REQUIRED',
+      400,
+      null,
+      body.requestId
+    );
+  }
+
+
+  return request(
+    'api/history/record',
+
+    {
+      method:
+        'POST',
+
+      body:
+        body,
+
+      requestId:
+        body.requestId,
+
+      timeoutMs:
+        historyTimeout()
+    }
+  );
+}
+  async function historyThumbnail(
+  payload
+) {
+  const body =
+    historyPayload(
+      payload,
+      true
+    );
+
+
+  if (
+    !cleanText(
+      body.recordId
+    ) ||
+
+    !cleanText(
+      body.roundId
+    )
+  ) {
+    throw new AlcoholAPIError(
+      'ไม่พบ Record ID หรือ Round ID',
+      'IMAGE_REFERENCE_REQUIRED',
+      400,
+      null,
+      body.requestId
+    );
+  }
+
+
+  return request(
+    'api/history/thumbnail',
+
+    {
+      method:
+        'POST',
+
+      body:
+        body,
+
+      requestId:
+        body.requestId,
+
+      timeoutMs:
+        historyTimeout()
+    }
+  );
+}
 
   async function historyImage(
     payload
@@ -1486,10 +1618,16 @@
         historyMonth,
 
       historyDay:
-        historyDay,
+  historyDay,
 
-      historyImage:
-        historyImage,
+historyRecord:
+  historyRecord,
+
+historyThumbnail:
+  historyThumbnail,
+
+historyImage:
+  historyImage,
 
       historyLogout:
         historyLogout,
