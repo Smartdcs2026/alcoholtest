@@ -282,7 +282,73 @@
       parts.month
     );
   }
+function currentBangkokDateKey() {
+  const parts = {};
 
+  new Intl.DateTimeFormat(
+    'en-CA',
+    {
+      timeZone:
+        CONFIG.TIMEZONE ||
+        'Asia/Bangkok',
+
+      year:
+        'numeric',
+
+      month:
+        '2-digit',
+
+      day:
+        '2-digit'
+    }
+  )
+    .formatToParts(
+      new Date()
+    )
+    .forEach(
+      function (part) {
+        parts[
+          part.type
+        ] =
+          part.value;
+      }
+    );
+
+  return (
+    parts.year +
+    '-' +
+    parts.month +
+    '-' +
+    parts.day
+  );
+}
+
+
+function fullThaiDateTitle(value) {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})$/
+      .exec(
+        cleanText(value)
+      );
+
+  if (!match) {
+    return cleanText(value);
+  }
+
+  const monthIndex =
+    Number(match[2]) - 1;
+
+  return (
+    Number(match[3]) +
+    ' ' +
+    (
+      THAI_MONTHS[monthIndex] ||
+      match[2]
+    ) +
+    ' ' +
+    match[1]
+  );
+}
 
   function parseMonthKey(
     monthKey
@@ -4300,76 +4366,74 @@
 
 
   function mainHeaderHtml(
-    title,
-    subtitle,
-    showBack
-  ) {
-    return (
-      '<header class="ahx-topbar">' +
+  title,
+  subtitle,
+  showBack
+) {
+  return (
+    '<header class="ahx-topbar ahx-topbar-clean">' +
 
-        '<div class="ahx-topbar-left">' +
+      '<div class="ahx-topbar-left">' +
 
-          (
-            showBack
-              ? (
-                '<button ' +
-                  'id="ahxBackButton" ' +
-                  'type="button" ' +
-                  'class="ahx-back-button"' +
-                '>' +
-                  '‹ ปฏิทิน' +
-                '</button>'
-              )
-              : (
-                '<div ' +
-                  'class="ahx-topbar-logo" ' +
-                  'aria-hidden="true"' +
-                '>' +
-                  '📊' +
-                '</div>'
-              )
-          ) +
+        (
+          showBack
+            ? (
+              '<button ' +
+                'id="ahxBackButton" ' +
+                'type="button" ' +
+                'class="ahx-back-button"' +
+              '>' +
+                '‹ ปฏิทิน' +
+              '</button>'
+            )
+            : (
+              '<span ' +
+                'class="ahx-title-mark" ' +
+                'aria-hidden="true"' +
+              '></span>'
+            )
+        ) +
 
-          '<div class="ahx-topbar-title">' +
+        '<div class="ahx-topbar-title">' +
 
-            '<div>' +
-              '<h2>' +
-                escapeHtml(title) +
-              '</h2>' +
+          '<div>' +
+            '<h2>' +
+              escapeHtml(title) +
+            '</h2>' +
 
-              '<p>' +
-                escapeHtml(subtitle) +
-              '</p>' +
-            '</div>' +
-
+            '<p id="ahxHeaderMeta">' +
+              escapeHtml(subtitle) +
+            '</p>' +
           '</div>' +
 
         '</div>' +
 
-        '<div class="ahx-topbar-actions">' +
+      '</div>' +
 
-          '<button ' +
-            'id="ahxLogoutButton" ' +
-            'type="button" ' +
-            'class="ahx-text-button danger"' +
-          '>' +
-            'ออกจากระบบ' +
-          '</button>' +
+      '<div class="ahx-topbar-actions">' +
 
-          '<button ' +
-            'id="ahxCloseButton" ' +
-            'type="button" ' +
-            'class="ahx-icon-button" ' +
-            'aria-label="ปิด"' +
-          '>' +
-            '×' +
-          '</button>' +
+        '<button ' +
+          'id="ahxLogoutButton" ' +
+          'type="button" ' +
+          'class="ahx-text-button danger"' +
+        '>' +
+          'ออกจากระบบ' +
+        '</button>' +
 
-        '</div>' +
+        '<button ' +
+          'id="ahxCloseButton" ' +
+          'type="button" ' +
+          'class="ahx-icon-button" ' +
+          'aria-label="ปิด"' +
+        '>' +
+          '×' +
+        '</button>' +
 
-      '</header>'
-    );
-  }
+      '</div>' +
+
+    '</header>'
+  );
+}
 
 
   function bindCommonHeaderEvents() {
@@ -4405,127 +4469,170 @@
    * Calendar
    ************************************************************/
 
-  function renderCalendarView() {
-    disconnectThumbnailObserver();
-    closeOverlay();
+ function renderCalendarView() {
+  disconnectThumbnailObserver();
+  closeOverlay();
 
-    const root =
-      getElement(
-        'ahxRoot'
-      );
+  const root =
+    getElement(
+      'ahxRoot'
+    );
 
-    if (!root) {
-      return;
-    }
+  if (!root) {
+    return;
+  }
 
-    root.innerHTML =
-      mainHeaderHtml(
-        'ประวัติการตรวจวัดแอลกอฮอล์',
+  root.innerHTML =
+    mainHeaderHtml(
+      'ประวัติการตรวจวัดแอลกอฮอล์',
 
-        'ผู้ใช้งาน: ' +
-        (
-          state.name ||
-          '-'
-        ),
+      'ผู้ใช้งาน: ' +
+      (
+        state.name ||
+        '-'
+      ),
 
-        false
-      ) +
+      false
+    ) +
 
-      '<section class="ahx-month-panel">' +
+    '<section class="ahx-month-panel ahx-month-panel-clean">' +
 
-        '<button ' +
-          'id="ahxPreviousMonth" ' +
-          'type="button" ' +
-          'aria-label="เดือนก่อนหน้า"' +
-        '>' +
-          '‹' +
-        '</button>' +
+      '<button ' +
+        'id="ahxPreviousMonth" ' +
+        'type="button" ' +
+        'aria-label="เดือนก่อนหน้า"' +
+      '>' +
+        '‹' +
+      '</button>' +
 
-        '<div class="ahx-month-title">' +
+      '<div class="ahx-month-title">' +
 
-          '<strong id="ahxMonthTitle">' +
-            escapeHtml(
-              monthTitle(
-                state.currentMonth
-              )
+        '<strong id="ahxMonthTitle">' +
+          escapeHtml(
+            monthTitle(
+              state.currentMonth
+            )
+          ) +
+        '</strong>' +
+
+        '<small id="ahxMonthGenerated">' +
+          'กำลังโหลดข้อมูล...' +
+        '</small>' +
+
+      '</div>' +
+
+      '<button ' +
+        'id="ahxCurrentMonth" ' +
+        'type="button" ' +
+        'class="ahx-current-month-button"' +
+      '>' +
+        'เดือนปัจจุบัน' +
+      '</button>' +
+
+      '<button ' +
+        'id="ahxNextMonth" ' +
+        'type="button" ' +
+        'aria-label="เดือนถัดไป"' +
+      '>' +
+        '›' +
+      '</button>' +
+
+    '</section>' +
+
+    '<main class="ahx-month-layout">' +
+
+      '<section class="ahx-month-calendar-pane">' +
+
+        '<div class="ahx-calendar-wrap ahx-calendar-wrap-clean">' +
+
+          '<div class="ahx-weekdays">' +
+            '<span>จ</span>' +
+            '<span>อ</span>' +
+            '<span>พ</span>' +
+            '<span>พฤ</span>' +
+            '<span>ศ</span>' +
+            '<span>ส</span>' +
+            '<span>อา</span>' +
+          '</div>' +
+
+          '<div ' +
+            'id="ahxCalendarGrid" ' +
+            'class="ahx-calendar-grid"' +
+          '>' +
+
+            loadingHtml(
+              'กำลังโหลดข้อมูลรายเดือน...'
             ) +
-          '</strong>' +
 
-          '<small id="ahxMonthGenerated">' +
-            'กำลังโหลดข้อมูล...' +
-          '</small>' +
+          '</div>' +
 
         '</div>' +
 
-        '<button ' +
-          'id="ahxNextMonth" ' +
-          'type="button" ' +
-          'aria-label="เดือนถัดไป"' +
-        '>' +
-          '›' +
-        '</button>' +
+        '<div class="ahx-legend ahx-legend-clean">' +
+
+          '<span>' +
+            '<i class="ahx-dot-data"></i>' +
+            'มีข้อมูล' +
+          '</span>' +
+
+          '<span>' +
+            '<i class="ahx-dot-deny"></i>' +
+            'มีผลห้ามเข้า' +
+          '</span>' +
+
+          '<span>' +
+            '<i class="ahx-legend-selected"></i>' +
+            'วันที่เลือก' +
+          '</span>' +
+
+        '</div>' +
 
       '</section>' +
+
+      '<aside ' +
+        'id="ahxMonthSummary" ' +
+        'class="ahx-month-summary-panel"' +
+      '>' +
+
+        loadingHtml(
+          'กำลังสรุปข้อมูล...'
+        ) +
+
+      '</aside>' +
 
       '<section ' +
-        'id="ahxMonthSummary" ' +
-        'class="ahx-summary-grid"' +
-      '></section>' +
+        'id="ahxSelectedDayPanel" ' +
+        'class="ahx-selected-day-panel"' +
+      '>' +
 
-      '<section class="ahx-calendar-wrap">' +
-
-        '<div class="ahx-weekdays">' +
-          '<span>จ</span>' +
-          '<span>อ</span>' +
-          '<span>พ</span>' +
-          '<span>พฤ</span>' +
-          '<span>ศ</span>' +
-          '<span>ส</span>' +
-          '<span>อา</span>' +
-        '</div>' +
-
-        '<div ' +
-          'id="ahxCalendarGrid" ' +
-          'class="ahx-calendar-grid"' +
-        '>' +
-
-          loadingHtml(
-            'กำลังโหลดข้อมูลรายเดือน...'
-          ) +
-
-        '</div>' +
+        selectedDayPanelHtml(
+          '',
+          null
+        ) +
 
       '</section>' +
 
-      '<div class="ahx-legend">' +
+    '</main>';
 
-        '<span>' +
-          '<i class="ahx-dot-data"></i>' +
-          'มีข้อมูล' +
-        '</span>' +
+  bindCommonHeaderEvents();
 
-        '<span>' +
-          '<i class="ahx-dot-deny"></i>' +
-          'มีผลห้ามเข้า' +
-        '</span>' +
-
-        '<span>' +
-          '<i class="ahx-dot-deleted"></i>' +
-          'ภาพถูกลบทั้งหมด' +
-        '</span>' +
-
-        '<span>' +
-          '<i class="ahx-dot-issue"></i>' +
-          'ภาพมีปัญหา' +
-        '</span>' +
-
-      '</div>';
-
-    bindCommonHeaderEvents();
-
+  const previousButton =
     getElement(
       'ahxPreviousMonth'
-    ).addEventListener(
+    );
+
+  const nextButton =
+    getElement(
+      'ahxNextMonth'
+    );
+
+  const currentButton =
+    getElement(
+      'ahxCurrentMonth'
+    );
+
+  if (previousButton) {
+    previousButton.addEventListener(
       'click',
       function () {
         loadMonth(
@@ -4536,10 +4643,10 @@
         );
       }
     );
+  }
 
-    getElement(
-      'ahxNextMonth'
-    ).addEventListener(
+  if (nextButton) {
+    nextButton.addEventListener(
       'click',
       function () {
         loadMonth(
@@ -4550,22 +4657,34 @@
         );
       }
     );
-
-    if (
-      state.monthData &&
-      state.monthData.month ===
-      state.currentMonth
-    ) {
-      renderMonthData(
-        state.monthData
-      );
-
-    } else {
-      loadMonth(
-        state.currentMonth
-      );
-    }
   }
+
+  if (currentButton) {
+    currentButton.addEventListener(
+      'click',
+      function () {
+        loadMonth(
+          currentBangkokMonth()
+        );
+      }
+    );
+  }
+
+  if (
+    state.monthData &&
+    state.monthData.month ===
+    state.currentMonth
+  ) {
+    renderMonthData(
+      state.monthData
+    );
+
+  } else {
+    loadMonth(
+      state.currentMonth
+    );
+  }
+}
 
 
   async function loadMonth(monthKey) {
@@ -4588,12 +4707,20 @@
       return;
     }
 
-    state.currentMonth =
-      monthKey;
+   if (
+  state.currentMonth !==
+  monthKey
+) {
+  state.currentDate =
+    '';
+}
 
-    saveLastMonth(
-      monthKey
-    );
+state.currentMonth =
+  monthKey;
+
+saveLastMonth(
+  monthKey
+);
 
     if (title) {
       title.textContent =
@@ -4689,83 +4816,374 @@
 
 
   function renderMonthData(data) {
-    const summary =
-      getElement(
-        'ahxMonthSummary'
-      );
+  const summary =
+    getElement(
+      'ahxMonthSummary'
+    );
 
-    const grid =
-      getElement(
-        'ahxCalendarGrid'
-      );
+  const grid =
+    getElement(
+      'ahxCalendarGrid'
+    );
 
-    const generated =
-      getElement(
-        'ahxMonthGenerated'
-      );
+  const generated =
+    getElement(
+      'ahxMonthGenerated'
+    );
 
-    if (!summary || !grid) {
-      return;
-    }
+  const headerMeta =
+    getElement(
+      'ahxHeaderMeta'
+    );
 
-    if (generated) {
-      generated.textContent =
+  if (!summary || !grid) {
+    return;
+  }
+
+  if (generated) {
+    generated.textContent =
+      data.generatedAt
+        ? (
+          'อัปเดตล่าสุด ' +
+          data.generatedAt
+        )
+        : '';
+  }
+
+  if (headerMeta) {
+    headerMeta.textContent =
+      'ผู้ใช้งาน: ' +
+      (
+        state.name ||
+        '-'
+      ) +
+      (
         data.generatedAt
           ? (
-            'อัปเดต ' +
+            ' • อัปเดตล่าสุด ' +
             data.generatedAt
           )
-          : '';
-    }
-
-    summary.innerHTML =
-      monthSummaryHtml(
-        data.totals || {}
-      );
-
-    grid.innerHTML =
-      calendarGridHtml(
-        data.month,
-        data.days || {}
-      );
-
-    grid
-      .querySelectorAll(
-        '[data-ahx-date]'
-      )
-      .forEach(
-        function (button) {
-          button.addEventListener(
-            'click',
-            function () {
-              const selectedDate =
-                cleanText(
-                  button.dataset
-                    .ahxDate
-                );
-
-              if (!selectedDate) {
-                return;
-              }
-
-              state.currentDate =
-                selectedDate;
-
-              state.currentPage =
-                1;
-
-              resetDayFilters();
-
-              renderDayView(
-                selectedDate
-              );
-            }
-          );
-        }
+          : ''
       );
   }
 
+  summary.innerHTML =
+    monthSummaryHtml(
+      data.totals || {}
+    );
 
+  const days =
+    data.days || {};
+
+  grid.innerHTML =
+    calendarGridHtml(
+      data.month,
+      days
+    );
+
+  const selectedDate =
+    pickDefaultMonthDate(
+      data.month,
+      days
+    );
+
+  state.currentDate =
+    selectedDate;
+
+  setSelectedCalendarDay(
+    selectedDate
+  );
+
+  renderSelectedDayPanel(
+    selectedDate,
+
+    selectedDate
+      ? days[selectedDate]
+      : null
+  );
+
+  grid
+    .querySelectorAll(
+      '[data-ahx-date]'
+    )
+    .forEach(
+      function (button) {
+        button.addEventListener(
+          'click',
+          function () {
+            const selected =
+              cleanText(
+                button.dataset
+                  .ahxDate
+              );
+
+            if (!selected) {
+              return;
+            }
+
+            state.currentDate =
+              selected;
+
+            state.currentPage =
+              1;
+
+            setSelectedCalendarDay(
+              selected
+            );
+
+            renderSelectedDayPanel(
+              selected,
+
+              days[selected] ||
+              null
+            );
+          }
+        );
+      }
+    );
+}
+
+
+function pickDefaultMonthDate(
+  monthKey,
+  days
+) {
+  if (
+    state.currentDate &&
+    state.currentDate.indexOf(
+      monthKey +
+      '-'
+    ) ===
+    0 &&
+    days[state.currentDate]
+  ) {
+    return state.currentDate;
+  }
+
+  const dateKeys =
+    Object
+      .keys(days)
+      .filter(
+        function (key) {
+          return Boolean(
+            days[key] &&
+            days[key].hasData !==
+            false
+          );
+        }
+      )
+      .sort();
+
+  return dateKeys.length
+    ? dateKeys[
+      dateKeys.length -
+      1
+    ]
+    : '';
+}
+
+
+function setSelectedCalendarDay(
+  dateKey
+) {
+  document
+    .querySelectorAll(
+      '.ahx-calendar-day.is-selected'
+    )
+    .forEach(
+      function (button) {
+        button.classList
+          .remove(
+            'is-selected'
+          );
+      }
+    );
+
+  if (!dateKey) {
+    return;
+  }
+
+  const selected =
+    document.querySelector(
+      '[data-ahx-date="' +
+      dateKey +
+      '"]'
+    );
+
+  if (selected) {
+    selected.classList
+      .add(
+        'is-selected'
+      );
+  }
+}
+
+
+function renderSelectedDayPanel(
+  dateKey,
+  item
+) {
+  const panel =
+    getElement(
+      'ahxSelectedDayPanel'
+    );
+
+  if (!panel) {
+    return;
+  }
+
+  panel.innerHTML =
+    selectedDayPanelHtml(
+      dateKey,
+      item
+    );
+
+  const openButton =
+    getElement(
+      'ahxOpenSelectedDay'
+    );
+
+  if (openButton) {
+    openButton.addEventListener(
+      'click',
+      function () {
+        if (!dateKey) {
+          return;
+        }
+
+        state.currentDate =
+          dateKey;
+
+        state.currentPage =
+          1;
+
+        resetDayFilters();
+
+        renderDayView(
+          dateKey
+        );
+      }
+    );
+  }
+}
+
+
+function selectedDayPanelHtml(
+  dateKey,
+  item
+) {
+  if (!dateKey || !item) {
+    return (
+      '<div class="ahx-selected-empty">' +
+        '<strong>' +
+          'เลือกวันที่ที่มีข้อมูล' +
+        '</strong>' +
+
+        '<span>' +
+          'ระบบจะแสดงสรุปของวันนั้นก่อนเปิดรายชื่อผู้ถูกตรวจ' +
+        '</span>' +
+      '</div>'
+    );
+  }
+
+  return (
+    '<div class="ahx-selected-head">' +
+
+      '<span>' +
+        'วันที่เลือก' +
+      '</span>' +
+
+      '<strong>' +
+        escapeHtml(
+          fullThaiDateTitle(
+            dateKey
+          )
+        ) +
+      '</strong>' +
+
+    '</div>' +
+
+    '<div class="ahx-selected-metrics">' +
+
+      selectedMetricHtml(
+        'รายการทั้งหมด',
+        item.totalRecords ||
+        0
+      ) +
+
+      selectedMetricHtml(
+        'อนุญาต',
+        item.allowCount ||
+        0,
+        'success'
+      ) +
+
+      selectedMetricHtml(
+        'ห้ามเข้า',
+        item.denyCount ||
+        0,
+        'danger'
+      ) +
+
+      selectedMetricHtml(
+        'ค่าสูงสุด',
+
+        formatMg(
+          item.maxValue
+        ) +
+        ' Mg%',
+
+        item.denyCount
+          ? 'danger'
+          : ''
+      ) +
+
+    '</div>' +
+
+    '<button ' +
+      'id="ahxOpenSelectedDay" ' +
+      'type="button" ' +
+      'class="ahx-open-selected-day"' +
+    '>' +
+
+      'ดูรายชื่อผู้ถูกตรวจ ' +
+
+      finiteNumber(
+        item.totalRecords,
+        0
+      ) +
+
+      ' รายการ' +
+
+    '</button>'
+  );
+}
+
+
+function selectedMetricHtml(
+  label,
+  value,
+  type
+) {
+  return (
+    '<div class="ahx-selected-metric ' +
+      escapeAttribute(
+        type ||
+        ''
+      ) +
+    '">' +
+
+      '<span>' +
+        escapeHtml(label) +
+      '</span>' +
+
+      '<strong>' +
+        escapeHtml(value) +
+      '</strong>' +
+
+    '</div>'
+  );
+}
   function summaryCardHtml(
     label,
     value,
@@ -4792,59 +5210,171 @@
 
 
   function monthSummaryHtml(totals) {
-    return (
-      summaryCardHtml(
-        'วันที่มีข้อมูล',
-        totals.daysWithData || 0
+  return (
+    '<div class="ahx-month-summary-head">' +
+
+      '<span>' +
+        'สรุปประจำเดือน' +
+      '</span>' +
+
+      '<strong>' +
+        escapeHtml(
+          monthTitle(
+            state.currentMonth
+          )
+        ) +
+      '</strong>' +
+
+    '</div>' +
+
+    '<div class="ahx-month-primary">' +
+
+      monthPrimaryMetricHtml(
+        'รายการทั้งหมด',
+        totals.totalRecords ||
+        0
       ) +
 
-      summaryCardHtml(
-        'รายการ',
-        totals.totalRecords || 0
-      ) +
-
-      summaryCardHtml(
-        'จำนวนรอบ',
-        totals.totalRounds || 0
-      ) +
-
-      summaryCardHtml(
+      monthPrimaryMetricHtml(
         'อนุญาต',
-        totals.allowCount || 0,
+        totals.allowCount ||
+        0,
         'success'
       ) +
 
-      summaryCardHtml(
+      monthPrimaryMetricHtml(
         'ห้ามเข้า',
-        totals.denyCount || 0,
+        totals.denyCount ||
+        0,
         'danger'
       ) +
 
-      summaryCardHtml(
+      monthPrimaryMetricHtml(
         'ค่าสูงสุด',
+
         formatMg(
           totals.maxValue
         ) +
-        ' Mg%'
+        ' Mg%',
+
+        totals.denyCount
+          ? 'danger'
+          : ''
       ) +
 
-      summaryCardHtml(
+    '</div>' +
+
+    '<div class="ahx-month-secondary">' +
+
+      monthSecondaryRowHtml(
+        'วันที่มีข้อมูล',
+
+        (
+          totals.daysWithData ||
+          0
+        ) +
+        ' วัน'
+      ) +
+
+      monthSecondaryRowHtml(
+        'จำนวนรอบ',
+
+        (
+          totals.totalRounds ||
+          0
+        ) +
+        ' รอบ'
+      ) +
+
+      monthSecondaryRowHtml(
         'ภาพพร้อมดู',
-        totals.imagesAvailable || 0
+
+        (
+          totals.imagesAvailable ||
+          0
+        ) +
+        ' ภาพ'
       ) +
 
-      summaryCardHtml(
+      monthSecondaryRowHtml(
         'ภาพถูกลบ',
-        totals.imagesDeleted || 0
+
+        (
+          totals.imagesDeleted ||
+          0
+        ) +
+        ' ภาพ'
       ) +
 
-      summaryCardHtml(
+      monthSecondaryRowHtml(
         'ภาพมีปัญหา',
-        totals.imageIssues || 0,
-        'warning'
-      )
-    );
-  }
+
+        (
+          totals.imageIssues ||
+          0
+        ) +
+        ' ภาพ',
+
+        totals.imageIssues
+          ? 'warning'
+          : ''
+      ) +
+
+    '</div>'
+  );
+}
+
+
+function monthPrimaryMetricHtml(
+  label,
+  value,
+  type
+) {
+  return (
+    '<div class="ahx-month-primary-item ' +
+      escapeAttribute(
+        type ||
+        ''
+      ) +
+    '">' +
+
+      '<span>' +
+        escapeHtml(label) +
+      '</span>' +
+
+      '<strong>' +
+        escapeHtml(value) +
+      '</strong>' +
+
+    '</div>'
+  );
+}
+
+
+function monthSecondaryRowHtml(
+  label,
+  value,
+  type
+) {
+  return (
+    '<div class="ahx-month-secondary-row ' +
+      escapeAttribute(
+        type ||
+        ''
+      ) +
+    '">' +
+
+      '<span>' +
+        escapeHtml(label) +
+      '</span>' +
+
+      '<strong>' +
+        escapeHtml(value) +
+      '</strong>' +
+
+    '</div>'
+  );
+}
 
 
   function calendarGridHtml(
@@ -4911,110 +5441,103 @@
 
 
   function calendarDayHtml(
-    key,
-    day,
-    item
+  key,
+  day,
+  item
+) {
+  const classes = [
+    'ahx-calendar-day'
+  ];
+
+  if (
+    key ===
+    currentBangkokDateKey()
   ) {
-    if (!item) {
-      return (
-        '<button ' +
-          'type="button" ' +
-          'class="ahx-calendar-day" ' +
-          'disabled' +
-        '>' +
+    classes.push(
+      'is-today'
+    );
+  }
 
-          '<span class="ahx-day-number">' +
-            day +
-          '</span>' +
-
-        '</button>'
-      );
-    }
-
-    const classes = [
-      'ahx-calendar-day',
-      'has-data'
-    ];
-
-    if (item.hasDeny) {
-      classes.push(
-        'has-deny'
-      );
-    }
-
-    if (item.allImagesDeleted) {
-      classes.push(
-        'images-deleted'
-      );
-    }
-
-    if (item.hasImageIssue) {
-      classes.push(
-        'image-issue'
-      );
-    }
-
+  if (!item) {
     return (
       '<button ' +
         'type="button" ' +
         'class="' +
           classes.join(' ') +
         '" ' +
-        'data-ahx-date="' +
-          escapeAttribute(key) +
-        '"' +
+        'disabled' +
       '>' +
 
         '<span class="ahx-day-number">' +
           day +
         '</span>' +
 
-        '<span class="ahx-day-badge">' +
-          finiteNumber(
-            item.totalRecords,
-            0
-          ) +
-        '</span>' +
-
-        '<div class="ahx-day-footer">' +
-
-          '<small>' +
-            finiteNumber(
-              item.totalRounds,
-              0
-            ) +
-            ' รอบ' +
-          '</small>' +
-
-          '<span class="ahx-day-dots">' +
-
-            '<i class="ahx-dot-data"></i>' +
-
-            (
-              item.hasDeny
-                ? '<i class="ahx-dot-deny"></i>'
-                : ''
-            ) +
-
-            (
-              item.allImagesDeleted
-                ? '<i class="ahx-dot-deleted"></i>'
-                : ''
-            ) +
-
-            (
-              item.hasImageIssue
-                ? '<i class="ahx-dot-issue"></i>'
-                : ''
-            ) +
-
-          '</span>' +
-
-        '</div>' +
-
       '</button>'
     );
   }
+
+  classes.push(
+    'has-data'
+  );
+
+  if (item.hasDeny) {
+    classes.push(
+      'has-deny'
+    );
+  }
+
+  const footerText =
+    item.hasDeny
+      ? (
+        'ห้ามเข้า ' +
+
+        finiteNumber(
+          item.denyCount,
+          0
+        )
+      )
+      : (
+        finiteNumber(
+          item.totalRecords,
+          0
+        ) +
+
+        ' รายการ'
+      );
+
+  return (
+    '<button ' +
+      'type="button" ' +
+      'class="' +
+        classes.join(' ') +
+      '" ' +
+      'data-ahx-date="' +
+        escapeAttribute(key) +
+      '"' +
+    '>' +
+
+      '<span class="ahx-day-number">' +
+        day +
+      '</span>' +
+
+      '<span class="ahx-day-badge">' +
+
+        finiteNumber(
+          item.totalRecords,
+          0
+        ) +
+
+      '</span>' +
+
+      '<span class="ahx-day-status-text">' +
+        escapeHtml(
+          footerText
+        ) +
+      '</span>' +
+
+    '</button>'
+  );
+}
 
 
   /************************************************************
