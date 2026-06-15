@@ -8135,7 +8135,8 @@ function monthSecondaryRowHtml(
       true;
 
     injectStyles();
-    loadSession();
+injectMonthlyRedesignStyles();
+loadSession();
 
     const button =
       ensureHistoryButton();
@@ -8179,3 +8180,1315 @@ function monthSecondaryRowHtml(
 
 })(window, document);
 
+function injectMonthlyRedesignStyles() {
+  const styleId =
+    'alcoholHistoryMonthV4Styles';
+
+  const oldStyle =
+    getElement(
+      styleId
+    );
+
+  if (oldStyle) {
+    oldStyle.remove();
+  }
+
+  const style =
+    document.createElement(
+      'style'
+    );
+
+  style.id =
+    styleId;
+
+  style.textContent = `
+    /**********************************************************
+     * Monthly History Redesign
+     **********************************************************/
+
+    .ahx-main-popup {
+      width:
+        min(
+          96vw,
+          1060px
+        )
+        !important;
+    }
+
+
+    /**********************************************************
+     * Clean Header
+     **********************************************************/
+
+    .ahx-topbar-clean {
+      min-height:
+        62px;
+
+      padding:
+        10px 14px;
+
+      background:
+        #0d3d57;
+
+      box-shadow:
+        0 3px 12px
+        rgba(
+          5,
+          35,
+          52,
+          0.18
+        );
+    }
+
+
+    .ahx-title-mark {
+      display:
+        block;
+
+      flex:
+        0 0 4px;
+
+      width:
+        4px;
+
+      height:
+        34px;
+
+      border-radius:
+        999px;
+
+      background:
+        #58b7df;
+    }
+
+
+    .ahx-topbar-clean h2 {
+      font-size:
+        15px;
+
+      font-weight:
+        850;
+
+      letter-spacing:
+        0.01em;
+    }
+
+
+    .ahx-topbar-clean p {
+      margin-top:
+        3px;
+
+      font-size:
+        8px;
+    }
+
+
+    /**********************************************************
+     * Month Navigation
+     **********************************************************/
+
+    .ahx-month-panel-clean {
+      grid-template-columns:
+        40px
+        minmax(0, 1fr)
+        auto
+        40px;
+
+      gap:
+        8px;
+
+      padding:
+        10px 12px;
+
+      background:
+        #ffffff;
+    }
+
+
+    .ahx-month-panel-clean
+    > button:not(
+      .ahx-current-month-button
+    ) {
+      width:
+        40px;
+
+      height:
+        38px;
+
+      border-color:
+        #c8d8e0;
+
+      background:
+        #f6f9fa;
+    }
+
+
+    .ahx-month-panel-clean
+    > button:not(
+      .ahx-current-month-button
+    ):active {
+      background:
+        #e8f2f6;
+
+      transform:
+        scale(0.96);
+    }
+
+
+    .ahx-current-month-button {
+      width:
+        auto
+        !important;
+
+      min-width:
+        92px;
+
+      height:
+        34px
+        !important;
+
+      padding:
+        5px 10px
+        !important;
+
+      border:
+        1px solid
+        #c8d8e0
+        !important;
+
+      border-radius:
+        8px
+        !important;
+
+      color:
+        #315565
+        !important;
+
+      background:
+        #ffffff
+        !important;
+
+      font-size:
+        8px
+        !important;
+
+      font-weight:
+        800
+        !important;
+    }
+
+
+    .ahx-current-month-button:active {
+      background:
+        #edf5f8
+        !important;
+    }
+
+
+    /**********************************************************
+     * Main Monthly Layout
+     **********************************************************/
+
+    .ahx-month-layout {
+      display:
+        grid;
+
+      grid-template-columns:
+        minmax(0, 1fr)
+        286px;
+
+      grid-template-areas:
+        "calendar summary"
+        "calendar selected";
+
+      align-items:
+        start;
+
+      gap:
+        10px;
+
+      padding:
+        10px;
+    }
+
+
+    .ahx-month-calendar-pane {
+      grid-area:
+        calendar;
+
+      min-width:
+        0;
+    }
+
+
+    /**********************************************************
+     * Monthly Summary Panel
+     **********************************************************/
+
+    .ahx-month-summary-panel {
+      grid-area:
+        summary;
+
+      overflow:
+        hidden;
+
+      border:
+        1px solid
+        #d2dfe5;
+
+      border-radius:
+        12px;
+
+      background:
+        #ffffff;
+
+      box-shadow:
+        0 3px 12px
+        rgba(
+          17,
+          55,
+          76,
+          0.06
+        );
+    }
+
+
+    .ahx-month-summary-head {
+      padding:
+        11px 12px;
+
+      border-bottom:
+        1px solid
+        #e0e8ec;
+
+      background:
+        #f7fafb;
+    }
+
+
+    .ahx-month-summary-head span {
+      display:
+        block;
+
+      color:
+        #6a7e88;
+
+      font-size:
+        8px;
+
+      font-weight:
+        700;
+    }
+
+
+    .ahx-month-summary-head strong {
+      display:
+        block;
+
+      margin-top:
+        2px;
+
+      color:
+        #173c50;
+
+      font-size:
+        13px;
+
+      font-weight:
+        850;
+    }
+
+
+    .ahx-month-primary {
+      display:
+        grid;
+
+      grid-template-columns:
+        repeat(
+          2,
+          minmax(0, 1fr)
+        );
+
+      gap:
+        6px;
+
+      padding:
+        9px;
+    }
+
+
+    .ahx-month-primary-item {
+      min-width:
+        0;
+
+      padding:
+        8px 7px;
+
+      border:
+        1px solid
+        #d9e4e9;
+
+      border-radius:
+        9px;
+
+      background:
+        #ffffff;
+    }
+
+
+    .ahx-month-primary-item span {
+      display:
+        block;
+
+      color:
+        #71838c;
+
+      font-size:
+        7px;
+
+      font-weight:
+        700;
+    }
+
+
+    .ahx-month-primary-item strong {
+      display:
+        block;
+
+      margin-top:
+        3px;
+
+      overflow:
+        hidden;
+
+      color:
+        #143c52;
+
+      font-size:
+        14px;
+
+      font-weight:
+        900;
+
+      text-overflow:
+        ellipsis;
+
+      white-space:
+        nowrap;
+    }
+
+
+    .ahx-month-primary-item.success {
+      border-color:
+        #b9dfcc;
+
+      background:
+        #f2fbf6;
+    }
+
+
+    .ahx-month-primary-item.success strong {
+      color:
+        var(
+          --ahx-success
+        );
+    }
+
+
+    .ahx-month-primary-item.danger {
+      border-color:
+        #efb8b8;
+
+      background:
+        #fff3f3;
+    }
+
+
+    .ahx-month-primary-item.danger strong {
+      color:
+        var(
+          --ahx-danger
+        );
+    }
+
+
+    .ahx-month-secondary {
+      display:
+        grid;
+
+      gap:
+        0;
+
+      padding:
+        0 10px 9px;
+    }
+
+
+    .ahx-month-secondary-row {
+      display:
+        flex;
+
+      align-items:
+        center;
+
+      justify-content:
+        space-between;
+
+      gap:
+        8px;
+
+      min-height:
+        30px;
+
+      border-bottom:
+        1px solid
+        #edf1f3;
+
+      color:
+        #647984;
+
+      font-size:
+        8px;
+    }
+
+
+    .ahx-month-secondary-row:last-child {
+      border-bottom:
+        0;
+    }
+
+
+    .ahx-month-secondary-row strong {
+      color:
+        #294a59;
+
+      font-size:
+        8px;
+
+      font-weight:
+        850;
+    }
+
+
+    .ahx-month-secondary-row.warning strong {
+      color:
+        #9a6e00;
+    }
+
+
+    /**********************************************************
+     * Selected Day Panel
+     **********************************************************/
+
+    .ahx-selected-day-panel {
+      grid-area:
+        selected;
+
+      overflow:
+        hidden;
+
+      border:
+        1px solid
+        #d2dfe5;
+
+      border-radius:
+        12px;
+
+      background:
+        #ffffff;
+
+      box-shadow:
+        0 3px 12px
+        rgba(
+          17,
+          55,
+          76,
+          0.06
+        );
+    }
+
+
+    .ahx-selected-empty {
+      display:
+        flex;
+
+      flex-direction:
+        column;
+
+      gap:
+        4px;
+
+      padding:
+        18px 14px;
+
+      color:
+        #6f828c;
+    }
+
+
+    .ahx-selected-empty strong {
+      color:
+        #355362;
+
+      font-size:
+        10px;
+
+      font-weight:
+        850;
+    }
+
+
+    .ahx-selected-empty span {
+      font-size:
+        8px;
+
+      line-height:
+        1.45;
+    }
+
+
+    .ahx-selected-head {
+      padding:
+        11px 12px;
+
+      border-bottom:
+        1px solid
+        #e0e8ec;
+
+      background:
+        #f7fafb;
+    }
+
+
+    .ahx-selected-head span {
+      display:
+        block;
+
+      color:
+        #6a7e88;
+
+      font-size:
+        7px;
+    }
+
+
+    .ahx-selected-head strong {
+      display:
+        block;
+
+      margin-top:
+        2px;
+
+      color:
+        #143c52;
+
+      font-size:
+        12px;
+
+      font-weight:
+        850;
+    }
+
+
+    .ahx-selected-metrics {
+      display:
+        grid;
+
+      grid-template-columns:
+        repeat(
+          2,
+          minmax(0, 1fr)
+        );
+
+      gap:
+        5px;
+
+      padding:
+        9px;
+    }
+
+
+    .ahx-selected-metric {
+      min-width:
+        0;
+
+      padding:
+        7px;
+
+      border-radius:
+        8px;
+
+      background:
+        #f4f8fa;
+    }
+
+
+    .ahx-selected-metric span {
+      display:
+        block;
+
+      color:
+        #71838c;
+
+      font-size:
+        7px;
+    }
+
+
+    .ahx-selected-metric strong {
+      display:
+        block;
+
+      margin-top:
+        2px;
+
+      overflow:
+        hidden;
+
+      color:
+        #173f54;
+
+      font-size:
+        12px;
+
+      font-weight:
+        900;
+
+      text-overflow:
+        ellipsis;
+
+      white-space:
+        nowrap;
+    }
+
+
+    .ahx-selected-metric.success {
+      background:
+        #edf9f3;
+    }
+
+
+    .ahx-selected-metric.success strong {
+      color:
+        var(
+          --ahx-success
+        );
+    }
+
+
+    .ahx-selected-metric.danger {
+      background:
+        #fff0f0;
+    }
+
+
+    .ahx-selected-metric.danger strong {
+      color:
+        var(
+          --ahx-danger
+        );
+    }
+
+
+    .ahx-open-selected-day {
+      width:
+        calc(
+          100% -
+          18px
+        );
+
+      min-height:
+        38px;
+
+      margin:
+        0 9px 10px;
+
+      padding:
+        7px 10px;
+
+      border:
+        0;
+
+      border-radius:
+        9px;
+
+      color:
+        #ffffff;
+
+      background:
+        #145a7a;
+
+      font:
+        inherit;
+
+      font-size:
+        9px;
+
+      font-weight:
+        850;
+    }
+
+
+    .ahx-open-selected-day:active {
+      background:
+        #0e455f;
+
+      transform:
+        scale(0.985);
+    }
+
+
+    /**********************************************************
+     * Calendar
+     **********************************************************/
+
+    .ahx-calendar-wrap-clean {
+      margin:
+        0;
+
+      border-radius:
+        12px;
+    }
+
+
+    .ahx-calendar-wrap-clean
+    .ahx-weekdays {
+      background:
+        #f5f8fa;
+    }
+
+
+    .ahx-calendar-wrap-clean
+    .ahx-weekdays span {
+      padding:
+        8px 2px;
+
+      color:
+        #536b77;
+
+      font-size:
+        8px;
+    }
+
+
+    .ahx-calendar-wrap-clean
+    .ahx-calendar-grid {
+      gap:
+        5px;
+
+      padding:
+        7px;
+    }
+
+
+    .ahx-calendar-wrap-clean
+    .ahx-calendar-day,
+    .ahx-calendar-wrap-clean
+    .ahx-calendar-empty {
+      min-height:
+        66px;
+    }
+
+
+    .ahx-calendar-wrap-clean
+    .ahx-calendar-day {
+      padding:
+        7px;
+
+      border-color:
+        #e0e7eb;
+
+      border-radius:
+        9px;
+
+      background:
+        #ffffff;
+
+      box-shadow:
+        none;
+    }
+
+
+    .ahx-calendar-wrap-clean
+    .ahx-calendar-day:not(
+      :disabled
+    ):hover {
+      border-color:
+        #7cb2cc;
+
+      background:
+        #f1f8fb;
+    }
+
+
+    .ahx-calendar-wrap-clean
+    .ahx-calendar-day.has-data {
+      border-color:
+        #9fc8dc;
+
+      background:
+        #eef8fc;
+    }
+
+
+    .ahx-calendar-wrap-clean
+    .ahx-calendar-day.has-deny {
+      border-color:
+        #e48686;
+
+      background:
+        #fff1f1;
+    }
+
+
+    .ahx-calendar-wrap-clean
+    .ahx-calendar-day.is-today {
+      box-shadow:
+        inset 0 0 0 2px
+        #195c7c;
+    }
+
+
+    .ahx-calendar-wrap-clean
+    .ahx-calendar-day.is-selected {
+      border-color:
+        #0f4d6b;
+
+      color:
+        #ffffff;
+
+      background:
+        #0f4d6b;
+
+      box-shadow:
+        0 5px 14px
+        rgba(
+          15,
+          77,
+          107,
+          0.22
+        );
+    }
+
+
+    .ahx-calendar-wrap-clean
+    .ahx-calendar-day.is-selected
+    .ahx-day-number,
+    .ahx-calendar-wrap-clean
+    .ahx-calendar-day.is-selected
+    .ahx-day-status-text {
+      color:
+        #ffffff;
+    }
+
+
+    .ahx-calendar-wrap-clean
+    .ahx-calendar-day.is-selected
+    .ahx-day-badge {
+      color:
+        #0f4d6b;
+
+      background:
+        #ffffff;
+    }
+
+
+    .ahx-calendar-day.images-deleted::after,
+    .ahx-calendar-day.image-issue::after {
+      display:
+        none
+        !important;
+    }
+
+
+    .ahx-day-footer,
+    .ahx-day-dots {
+      display:
+        none
+        !important;
+    }
+
+
+    .ahx-day-number {
+      color:
+        #2b4a58;
+
+      font-size:
+        13px;
+
+      font-weight:
+        900;
+    }
+
+
+    .ahx-day-badge {
+      min-width:
+        19px;
+
+      padding:
+        2px 5px;
+
+      font-size:
+        7px;
+    }
+
+
+    .ahx-day-status-text {
+      display:
+        block;
+
+      margin-top:
+        auto;
+
+      overflow:
+        hidden;
+
+      color:
+        #627984;
+
+      font-size:
+        7px;
+
+      font-weight:
+        750;
+
+      text-overflow:
+        ellipsis;
+
+      white-space:
+        nowrap;
+    }
+
+
+    .ahx-calendar-day.has-deny
+    .ahx-day-status-text {
+      color:
+        #bd2929;
+    }
+
+
+    /**********************************************************
+     * Legend
+     **********************************************************/
+
+    .ahx-legend-clean {
+      gap:
+        8px 15px;
+
+      padding:
+        8px 5px 0;
+    }
+
+
+    .ahx-legend-clean span {
+      color:
+        #607681;
+
+      font-size:
+        7px;
+    }
+
+
+    .ahx-legend-selected {
+      width:
+        8px
+        !important;
+
+      height:
+        8px
+        !important;
+
+      border:
+        2px solid
+        #0f4d6b;
+
+      border-radius:
+        2px
+        !important;
+
+      background:
+        #ffffff;
+    }
+
+
+    /**********************************************************
+     * Tablet / Mobile
+     **********************************************************/
+
+    @media (
+      max-width: 760px
+    ) {
+      .ahx-month-panel-clean {
+        grid-template-columns:
+          38px
+          minmax(0, 1fr)
+          38px;
+      }
+
+
+      .ahx-current-month-button {
+        display:
+          none
+          !important;
+      }
+
+
+      .ahx-month-layout {
+        grid-template-columns:
+          1fr;
+
+        grid-template-areas:
+          "summary"
+          "calendar"
+          "selected";
+
+        gap:
+          7px;
+
+        padding:
+          7px;
+      }
+
+
+      .ahx-month-primary {
+        grid-template-columns:
+          repeat(
+            4,
+            minmax(0, 1fr)
+          );
+
+        gap:
+          4px;
+
+        padding:
+          7px;
+      }
+
+
+      .ahx-month-primary-item {
+        padding:
+          6px 4px;
+      }
+
+
+      .ahx-month-primary-item span {
+        font-size:
+          6px;
+      }
+
+
+      .ahx-month-primary-item strong {
+        font-size:
+          11px;
+      }
+
+
+      .ahx-month-secondary {
+        grid-template-columns:
+          repeat(
+            2,
+            minmax(0, 1fr)
+          );
+
+        column-gap:
+          12px;
+      }
+
+
+      .ahx-calendar-wrap-clean
+      .ahx-calendar-day,
+      .ahx-calendar-wrap-clean
+      .ahx-calendar-empty {
+        min-height:
+          52px;
+      }
+
+
+      .ahx-calendar-wrap-clean
+      .ahx-calendar-grid {
+        gap:
+          3px;
+
+        padding:
+          4px;
+      }
+
+
+      .ahx-calendar-wrap-clean
+      .ahx-calendar-day {
+        padding:
+          5px;
+      }
+
+
+      .ahx-day-status-text {
+        font-size:
+          6px;
+      }
+
+
+      .ahx-selected-day-panel {
+        position:
+          sticky;
+
+        bottom:
+          0;
+
+        z-index:
+          18;
+
+        box-shadow:
+          0 -4px 20px
+          rgba(
+            12,
+            49,
+            68,
+            0.14
+          );
+      }
+    }
+
+
+    /**********************************************************
+     * Small Mobile
+     **********************************************************/
+
+    @media (
+      max-width: 390px
+    ) {
+      .ahx-topbar-clean {
+        min-height:
+          56px;
+
+        padding:
+          8px;
+      }
+
+
+      .ahx-title-mark {
+        height:
+          29px;
+      }
+
+
+      .ahx-topbar-clean h2 {
+        font-size:
+          12px;
+      }
+
+
+      .ahx-topbar-clean p {
+        font-size:
+          6px;
+      }
+
+
+      .ahx-month-panel-clean {
+        padding:
+          7px;
+      }
+
+
+      .ahx-month-primary-item strong {
+        font-size:
+          10px;
+      }
+
+
+      .ahx-month-secondary-row {
+        min-height:
+          27px;
+
+        font-size:
+          7px;
+      }
+
+
+      .ahx-month-secondary-row strong {
+        font-size:
+          7px;
+      }
+
+
+      .ahx-calendar-wrap-clean
+      .ahx-calendar-day,
+      .ahx-calendar-wrap-clean
+      .ahx-calendar-empty {
+        min-height:
+          47px;
+      }
+
+
+      .ahx-calendar-wrap-clean
+      .ahx-calendar-day {
+        padding:
+          5px 4px;
+      }
+
+
+      .ahx-day-number {
+        font-size:
+          11px;
+      }
+
+
+      .ahx-day-badge {
+        top:
+          4px;
+
+        right:
+          4px;
+
+        min-width:
+          16px;
+
+        padding:
+          1px 4px;
+
+        font-size:
+          6px;
+      }
+
+
+      .ahx-day-status-text {
+        display:
+          none;
+      }
+
+
+      .ahx-selected-metrics {
+        gap:
+          4px;
+
+        padding:
+          7px;
+      }
+
+
+      .ahx-selected-metric {
+        padding:
+          6px;
+      }
+
+
+      .ahx-selected-metric strong {
+        font-size:
+          10px;
+      }
+
+
+      .ahx-open-selected-day {
+        min-height:
+          36px;
+
+        font-size:
+          8px;
+      }
+    }
+  `;
+
+  document.head
+    .appendChild(
+      style
+    );
+}
