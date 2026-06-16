@@ -542,21 +542,33 @@
   }
 
 
-  function isBusType(
-    value
-  ) {
-    const text =
-      cleanText(value)
-        .toLowerCase();
 
-    return (
-      text.includes('พขร') ||
-      text.includes(
-        'รถรับส่ง'
-      ) ||
-      text.includes('bus')
-    );
-  }
+function isBusType(
+  value
+) {
+  const selectedType =
+    cleanText(value)
+      .toLowerCase()
+      .replace(
+        /\s+/g,
+        ' '
+      );
+
+  const requiredType =
+    'พขร.รถรับส่ง พนง'
+      .toLowerCase()
+      .replace(
+        /\s+/g,
+        ' '
+      );
+
+  return (
+    selectedType ===
+    requiredType
+  );
+}
+
+
 
 
   function requiresCompany(
