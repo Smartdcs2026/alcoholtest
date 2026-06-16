@@ -671,17 +671,18 @@ function updatePersonTypeFields() {
    * ชื่อผู้ถูกตรวจต้องกรอกทุกประเภท
    * รวมถึงตัวเลือก อื่นๆ
    */
-  if (personNameInput) {
-    personNameInput.required =
-      Boolean(personType);
 
-    personNameInput.setAttribute(
-      'aria-required',
-      personType
-        ? 'true'
-        : 'false'
-    );
-  }
+ 
+if (personNameInput) {
+  personNameInput.required =
+    true;
+
+  personNameInput.setAttribute(
+    'aria-required',
+    'true'
+  );
+}
+
 
 
   /*
@@ -770,8 +771,18 @@ function updatePersonTypeFields() {
     );
   }
 
-  updateActionButtons();
+  /*
+   * หากเป็นประเภทรถรับส่ง
+   * ให้ตรวจสอบต่อว่าสายรถเลือก "อื่นๆ" หรือไม่
+   */
+  if (showBusLine) {
+    updateBusLineOtherField();
+  } else {
+    updateActionButtons();
+  }
 }
+
+
 
 
 
@@ -1747,70 +1758,78 @@ function updateBusLineOtherField() {
    * Button State
    ************************************************************/
 
-  function updateActionButtons() {
-    const addRoundButton =
-      getElement(
-        'addRoundButton'
+function updateActionButtons() {
+  const addRoundButton =
+    getElement(
+      'addRoundButton'
+    );
+
+  const saveButton =
+    getElement(
+      'saveButton'
+    );
+
+  const resetButton =
+    getElement(
+      'resetButton'
+    );
+
+  const coreReady =
+    validateCoreFields(
+      false
+    ).valid;
+
+  const draftReady =
+    isDraftReady();
+
+  const hasRoundToSave =
+    state.rounds.length > 0 ||
+    draftReady;
+
+  const systemUnavailable =
+    !state.initialized ||
+    state.loading ||
+    state.saving ||
+    !state.online;
+
+  if (addRoundButton) {
+    addRoundButton.disabled =
+      Boolean(
+        systemUnavailable ||
+        !draftReady ||
+        state.rounds.length >=
+        state.config.maxRounds
       );
-
-    const saveButton =
-      getElement(
-        'saveButton'
-      );
-
-    const resetButton =
-      getElement(
-        'resetButton'
-      );
-
-    const coreReady =
-      validateCoreFields(
-        false
-      ).valid;
-
-    const draftReady =
-      isDraftReady();
-
-    const hasRoundToSave =
-      state.rounds.length > 0 ||
-      draftReady;
-
-    if (addRoundButton) {
-      addRoundButton.disabled =
-        Boolean(
-          !state.initialized ||
-          state.loading ||
-          state.saving ||
-          !draftReady ||
-          state.rounds.length >=
-          state.config.maxRounds
-        );
-    }
-
-    if (saveButton) {
-      saveButton.disabled =
-        Boolean(
-          !state.initialized ||
-          state.loading ||
-          state.saving ||
-          !coreReady ||
-          !hasRoundToSave
-        );
-
-      saveButton.textContent =
-        state.saving
-          ? 'กำลังบันทึก...'
-          : 'บันทึกข้อมูล';
-    }
-
-    if (resetButton) {
-      resetButton.disabled =
-        Boolean(
-          state.saving ||
-          !hasAnyFormData()
-        );
-    }
   }
+
+  if (saveButton) {
+    saveButton.disabled =
+      Boolean(
+        systemUnavailable ||
+        !coreReady ||
+        !hasRoundToSave
+      );
+
+    saveButton.textContent =
+      state.saving
+        ? 'กำลังบันทึก...'
+        : (
+          !state.online
+            ? 'อุปกรณ์ออฟไลน์'
+            : 'บันทึกข้อมูล'
+        );
+  }
+
+  if (resetButton) {
+    resetButton.disabled =
+      Boolean(
+        state.saving ||
+        !hasAnyFormData()
+      );
+  }
+}
+
+
 
 
   /************************************************************
