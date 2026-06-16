@@ -543,55 +543,58 @@
 
 
 
+function normalizePersonType(
+  value
+) {
+  return cleanText(value)
+    .toLowerCase()
+    .replace(
+      /\s+/g,
+      ' '
+    );
+}
+
+
 function isBusType(
   value
 ) {
-  const selectedType =
-    cleanText(value)
-      .toLowerCase()
-      .replace(
-        /\s+/g,
-        ' '
-      );
-
-  const requiredType =
-    'พขร.รถรับส่ง พนง'
-      .toLowerCase()
-      .replace(
-        /\s+/g,
-        ' '
-      );
-
   return (
-    selectedType ===
-    requiredType
+    normalizePersonType(value) ===
+    'พขร.รถรับส่ง พนง'
   );
 }
 
 
+function isCompanyDriverType(
+  value
+) {
+  const text =
+    normalizePersonType(value);
+
+  return (
+    text === 'พขร.' ||
+    text === 'พขร'
+  );
+}
 
 
-  function requiresCompany(
-    value
-  ) {
-    const text =
-      cleanText(value)
-        .toLowerCase();
+function requiresCompany(
+  value
+) {
+  const text =
+    normalizePersonType(value);
 
-    return (
-      text.includes(
-        'เวนเดอร์'
-      ) ||
-      text.includes(
-        'vendor'
-      ) ||
-      text.includes('ช่าง') ||
-      text.includes(
-        'contractor'
-      ) ||
-      isOtherOption(text)
-    );
-  }
+  return (
+    isCompanyDriverType(text) ||
+    text.includes('เวนเดอร์') ||
+    text.includes('vendor') ||
+    text.includes('ช่าง') ||
+    text.includes('contractor') ||
+    isOtherOption(text)
+  );
+}
+
+
 
 
   function updatePersonTypeFields() {
