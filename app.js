@@ -543,6 +543,7 @@
 
 
 
+
 function normalizePersonType(
   value
 ) {
@@ -555,12 +556,66 @@ function normalizePersonType(
 }
 
 
+function isOtherOption(
+  value
+) {
+  const text =
+    normalizePersonType(
+      value
+    );
+
+  return [
+    'อื่นๆ',
+    'อื่น ๆ',
+    'other'
+  ].includes(text);
+}
+
+
+/*
+ * แสดงสายรถเฉพาะ
+ * พขร.รถรับส่ง พนง เท่านั้น
+ */
 function isBusType(
   value
 ) {
   return (
     normalizePersonType(value) ===
-    'พขร.รถรับส่ง พนง'
+    normalizePersonType(
+      'พขร.รถรับส่ง พนง'
+    )
+  );
+}
+
+
+/*
+ * ประเภทที่ต้องกรอกชื่อบริษัท
+ */
+function requiresCompany(
+  value
+) {
+  const text =
+    normalizePersonType(
+      value
+    );
+
+  return (
+    text === 'พนักงาน' ||
+    text === 'พขร.' ||
+    text === 'พขร' ||
+    text.includes(
+      'เวนเดอร์'
+    ) ||
+    text.includes(
+      'vendor'
+    ) ||
+    text.includes(
+      'ช่าง'
+    ) ||
+    text.includes(
+      'contractor'
+    ) ||
+    isOtherOption(text)
   );
 }
 
@@ -578,21 +633,7 @@ function isCompanyDriverType(
 }
 
 
-function requiresCompany(
-  value
-) {
-  const text =
-    normalizePersonType(value);
 
-  return (
-    isCompanyDriverType(text) ||
-    text.includes('เวนเดอร์') ||
-    text.includes('vendor') ||
-    text.includes('ช่าง') ||
-    text.includes('contractor') ||
-    isOtherOption(text)
-  );
-}
 
 
 
