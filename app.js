@@ -523,26 +523,10 @@
   }
 
 
-  /************************************************************
-   * Person Type
-   ************************************************************/
 
-  function isOtherOption(
-    value
-  ) {
-    const text =
-      cleanText(value)
-        .toLowerCase();
-
-    return (
-      text === 'อื่นๆ' ||
-      text === 'อื่น ๆ' ||
-      text === 'other'
-    );
-  }
-
-
-
+/************************************************************
+ * Person Type
+ ************************************************************/
 
 function normalizePersonType(
   value
@@ -559,16 +543,13 @@ function normalizePersonType(
 function isOtherOption(
   value
 ) {
-  const text =
-    normalizePersonType(
-      value
-    );
-
   return [
     'อื่นๆ',
     'อื่น ๆ',
     'other'
-  ].includes(text);
+  ].includes(
+    normalizePersonType(value)
+  );
 }
 
 
@@ -595,186 +576,250 @@ function requiresCompany(
   value
 ) {
   const text =
-    normalizePersonType(
-      value
-    );
+    normalizePersonType(value);
 
   return (
     text === 'พนักงาน' ||
     text === 'พขร.' ||
     text === 'พขร' ||
-    text.includes(
-      'เวนเดอร์'
-    ) ||
-    text.includes(
-      'vendor'
-    ) ||
-    text.includes(
-      'ช่าง'
-    ) ||
-    text.includes(
-      'contractor'
-    ) ||
+    text.includes('เวนเดอร์') ||
+    text.includes('vendor') ||
+    text.includes('ช่าง') ||
+    text.includes('contractor') ||
     isOtherOption(text)
   );
 }
 
 
-function isCompanyDriverType(
-  value
-) {
-  const text =
-    normalizePersonType(value);
+function updatePersonTypeFields() {
+  const personTypeSelect =
+    getElement(
+      'personTypeSelect'
+    );
 
-  return (
-    text === 'พขร.' ||
-    text === 'พขร'
+  if (!personTypeSelect) {
+    return;
+  }
+
+  const personType =
+    cleanText(
+      personTypeSelect.value
+    );
+
+  const showOtherType =
+    isOtherOption(
+      personType
+    );
+
+  const showBusLine =
+    isBusType(
+      personType
+    );
+
+  const showCompany =
+    !showBusLine &&
+    requiresCompany(
+      personType
+    );
+
+  const personNameInput =
+    getElement(
+      'personName'
+    );
+
+  const otherTypeInput =
+    getElement(
+      'personTypeOther'
+    );
+
+  const companyInput =
+    getElement(
+      'companyInput'
+    );
+
+  const busLineSelect =
+    getElement(
+      'busLineSelect'
+    );
+
+  const busLineOther =
+    getElement(
+      'busLineOther'
+    );
+
+
+  /*
+   * แสดงหรือซ่อนช่อง
+   */
+  setHidden(
+    'personTypeOtherGroup',
+    !showOtherType
   );
+
+  setHidden(
+    'companyGroup',
+    !showCompany
+  );
+
+  setHidden(
+    'busLineGroup',
+    !showBusLine
+  );
+
+
+  /*
+   * ชื่อผู้ถูกตรวจต้องกรอกทุกประเภท
+   * รวมถึงตัวเลือก อื่นๆ
+   */
+  if (personNameInput) {
+    personNameInput.required =
+      Boolean(personType);
+
+    personNameInput.setAttribute(
+      'aria-required',
+      personType
+        ? 'true'
+        : 'false'
+    );
+  }
+
+
+  /*
+   * เมื่อเลือก อื่นๆ
+   * ต้องระบุประเภทอื่น
+   */
+  if (otherTypeInput) {
+    otherTypeInput.required =
+      showOtherType;
+
+    otherTypeInput.setAttribute(
+      'aria-required',
+      showOtherType
+        ? 'true'
+        : 'false'
+    );
+
+    if (!showOtherType) {
+      otherTypeInput.value =
+        '';
+    }
+  }
+
+
+  /*
+   * เมื่อประเภทนั้นต้องมีบริษัท
+   * ให้บังคับกรอกชื่อบริษัท
+   */
+  if (companyInput) {
+    companyInput.required =
+      showCompany;
+
+    companyInput.setAttribute(
+      'aria-required',
+      showCompany
+        ? 'true'
+        : 'false'
+    );
+
+    if (!showCompany) {
+      companyInput.value =
+        '';
+    }
+  }
+
+
+  /*
+   * แสดงและบังคับสายรถเฉพาะ
+   * พขร.รถรับส่ง พนง
+   */
+  if (busLineSelect) {
+    busLineSelect.required =
+      showBusLine;
+
+    busLineSelect.setAttribute(
+      'aria-required',
+      showBusLine
+        ? 'true'
+        : 'false'
+    );
+  }
+
+
+  if (!showBusLine) {
+    if (busLineSelect) {
+      busLineSelect.value =
+        '';
+    }
+
+    if (busLineOther) {
+      busLineOther.value =
+        '';
+
+      busLineOther.required =
+        false;
+
+      busLineOther.setAttribute(
+        'aria-required',
+        'false'
+      );
+    }
+
+    setHidden(
+      'busLineOtherGroup',
+      true
+    );
+  }
+
+  updateActionButtons();
 }
 
 
 
 
-
-
-
-  function updatePersonTypeFields() {
-    const personTypeSelect =
-      getElement(
-        'personTypeSelect'
-      );
-
-    if (!personTypeSelect) {
-      return;
-    }
-
-    const personType =
-      cleanText(
-        personTypeSelect.value
-      );
-
-    const showOtherType =
-      isOtherOption(
-        personType
-      );
-
-    const showBusLine =
-      isBusType(
-        personType
-      );
-
-    const showCompany =
-      !showBusLine &&
-      requiresCompany(
-        personType
-      );
-
-    setHidden(
-      'personTypeOtherGroup',
-      !showOtherType
+function updateBusLineOtherField() {
+  const select =
+    getElement(
+      'busLineSelect'
     );
 
-    setHidden(
-      'companyGroup',
-      !showCompany
+  const input =
+    getElement(
+      'busLineOther'
     );
 
-    setHidden(
-      'busLineGroup',
-      !showBusLine
-    );
-
-    const otherTypeInput =
-      getElement(
-        'personTypeOther'
-      );
-
-    const companyInput =
-      getElement(
-        'companyInput'
-      );
-
-    const busLineSelect =
-      getElement(
-        'busLineSelect'
-      );
-
-    const busLineOther =
-      getElement(
-        'busLineOther'
-      );
-
-    if (
-      !showOtherType &&
-      otherTypeInput
-    ) {
-      otherTypeInput.value =
-        '';
-    }
-
-    if (
-      !showCompany &&
-      companyInput
-    ) {
-      companyInput.value =
-        '';
-    }
-
-    if (!showBusLine) {
-      if (busLineSelect) {
-        busLineSelect.value =
-          '';
-      }
-
-      if (busLineOther) {
-        busLineOther.value =
-          '';
-      }
-
-      setHidden(
-        'busLineOtherGroup',
-        true
-      );
-    }
-
-    updateActionButtons();
+  if (!select) {
+    return;
   }
 
+  const showOther =
+    isOtherOption(
+      select.value
+    );
 
-  function updateBusLineOtherField() {
-    const select =
-      getElement(
-        'busLineSelect'
-      );
+  setHidden(
+    'busLineOtherGroup',
+    !showOther
+  );
 
-    if (!select) {
-      return;
-    }
+  if (input) {
+    input.required =
+      showOther;
 
-    const showOther =
-      isOtherOption(
-        select.value
-      );
-
-    setHidden(
-      'busLineOtherGroup',
-      !showOther
+    input.setAttribute(
+      'aria-required',
+      showOther
+        ? 'true'
+        : 'false'
     );
 
     if (!showOther) {
-      const input =
-        getElement(
-          'busLineOther'
-        );
-
-      if (input) {
-        input.value =
-          '';
-      }
+      input.value =
+        '';
     }
-
-    updateActionButtons();
   }
+
+  updateActionButtons();
+}
 
 
   /************************************************************
