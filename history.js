@@ -9598,7 +9598,7 @@ document.getElementById(
 STYLE_ID
 );
 
-```
+
 if (oldStyle) {
   oldStyle.remove();
 }
@@ -9612,7 +9612,7 @@ style.id =
   STYLE_ID;
 
 style.textContent = `
-```
+
 
 .ahx-main-popup{width:min(96vw,1120px)!important;}
 .ahx-result-bar{min-height:34px;padding:0 12px 9px;color:#526975;font-size:11px;font-weight:700;}
