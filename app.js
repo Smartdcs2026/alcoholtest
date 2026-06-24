@@ -1271,6 +1271,220 @@ function updateBusLineOtherField() {
    * Load Options
    ************************************************************/
 
+  const OPTIONS_CACHE_KEY =
+    'alcohol_options_cache_v1';
+
+  const OPTIONS_CACHE_MAX_AGE_MS =
+    12 * 60 * 60 * 1000;
+
+
+  function normalizeOptionsResponse(
+    response
+  ) {
+    if (
+      !response ||
+      response.ok !== true
+    ) {
+      throw new Error(
+        response &&
+        response.message
+          ? response.message
+          : 'API ส่งผลลัพธ์ไม่สำเร็จ'
+      );
+    }
+
+    if (
+      !response.options ||
+      typeof response.options !==
+        'object'
+    ) {
+      throw new Error(
+        'API ไม่ได้ส่ง options กลับมา'
+      );
+    }
+
+    return response;
+  }
+
+
+  function applyOptionsResponse(
+    response
+  ) {
+    const validResponse =
+      normalizeOptionsResponse(
+        response
+      );
+
+    state.options = {
+      personTypes:
+        Array.isArray(
+          validResponse.options
+            .personTypes
+        )
+          ? validResponse.options
+            .personTypes
+          : [],
+
+      inspectors:
+        Array.isArray(
+          validResponse.options
+            .inspectors
+        )
+          ? validResponse.options
+            .inspectors
+          : [],
+
+      busLines:
+        Array.isArray(
+          validResponse.options
+            .busLines
+        )
+          ? validResponse.options
+            .busLines
+          : [],
+
+      checkpoints:
+        Array.isArray(
+          validResponse.options
+            .checkpoints
+        )
+          ? validResponse.options
+            .checkpoints
+          : [
+            'ป้อมหน้า',
+            'ป้อมล่าง'
+          ]
+    };
+
+    applyBackendConfig(
+      validResponse.config
+    );
+
+    fillOptions();
+    updatePersonTypeFields();
+    updateGauge();
+
+    const requiredMissing = [];
+    const warnings = [];
+
+    if (
+      state.options
+        .personTypes
+        .length === 0
+    ) {
+      requiredMissing.push(
+        'Person type'
+      );
+    }
+
+    if (
+      state.options
+        .inspectors
+        .length === 0
+    ) {
+      requiredMissing.push(
+        'Name'
+      );
+    }
+
+    if (
+      state.options
+        .busLines
+        .length === 0
+    ) {
+      warnings.push(
+        'bus line'
+      );
+    }
+
+    return {
+      requiredMissing:
+        requiredMissing,
+
+      warnings:
+        warnings
+    };
+  }
+
+
+  function saveOptionsCache(
+    response
+  ) {
+    try {
+      window.localStorage
+        .setItem(
+          OPTIONS_CACHE_KEY,
+          JSON.stringify({
+            savedAt:
+              Date.now(),
+
+            response:
+              response
+          })
+        );
+
+    } catch (error) {
+      console.warn(
+        'ไม่สามารถบันทึกตัวเลือกสำรองได้',
+        error
+      );
+    }
+  }
+
+
+  function loadOptionsCache() {
+    try {
+      const raw =
+        window.localStorage
+          .getItem(
+            OPTIONS_CACHE_KEY
+          );
+
+      if (!raw) {
+        return null;
+      }
+
+      const cached =
+        JSON.parse(raw);
+
+      const savedAt =
+        Number(
+          cached &&
+          cached.savedAt
+        );
+
+      if (
+        !Number.isFinite(savedAt) ||
+        Date.now() - savedAt >
+          OPTIONS_CACHE_MAX_AGE_MS
+      ) {
+        window.localStorage
+          .removeItem(
+            OPTIONS_CACHE_KEY
+          );
+
+        return null;
+      }
+
+      return normalizeOptionsResponse(
+        cached.response
+      );
+
+    } catch (error) {
+      try {
+        window.localStorage
+          .removeItem(
+            OPTIONS_CACHE_KEY
+          );
+      } catch (removeError) {
+        console.warn(removeError);
+      }
+
+      return null;
+    }
+  }
+
+
   async function loadSystemData() {
     if (
       !API ||
@@ -1294,159 +1508,42 @@ function updateBusLineOtherField() {
       return;
     }
 
-    state.loading =
-      true;
+    state.loading = true;
+    state.initialized = false;
 
-    state.initialized =
-      false;
-
-    setSelectsLoading(
-      true
-    );
-
+    setSelectsLoading(true);
     updateActionButtons();
 
     setConnectionStatus(
       navigator.onLine,
-      'กำลังตรวจสอบ'
+      'กำลังโหลด'
     );
 
     setSystemStatus(
-      'กำลังเชื่อมต่อและโหลดตัวเลือก...',
+      'กำลังโหลดประเภทบุคคล ผู้ตรวจวัด และสายรถ...',
       'loading'
     );
 
     try {
-      try {
-        if (
-          typeof API.health ===
-          'function'
-        ) {
-          await API.health();
-        }
-      } catch (
-        healthError
-      ) {
-        console.warn(
-          'Health check failed:',
-          healthError
-        );
-      }
-
+      /*
+       * ไม่เรียก /api/health ก่อน /api/options
+       * เพราะทำให้ Apps Script ต้องเริ่มทำงานสองครั้ง
+       * และเพิ่มโอกาส Timeout โดยไม่จำเป็น
+       */
       const response =
         await API.getOptions();
 
-      if (
-        !response ||
-        response.ok !== true
-      ) {
-        throw new Error(
-          response &&
-          response.message
-            ? response.message
-            : 'API ส่งผลลัพธ์ไม่สำเร็จ'
+      const result =
+        applyOptionsResponse(
+          response
         );
-      }
 
-      if (
-        !response.options ||
-        typeof response.options !==
-        'object'
-      ) {
-        throw new Error(
-          'API ไม่ได้ส่ง options กลับมา'
-        );
-      }
-
-      state.options = {
-        personTypes:
-          Array.isArray(
-            response.options
-              .personTypes
-          )
-            ? response.options
-              .personTypes
-            : [],
-
-        inspectors:
-          Array.isArray(
-            response.options
-              .inspectors
-          )
-            ? response.options
-              .inspectors
-            : [],
-
-        busLines:
-          Array.isArray(
-            response.options
-              .busLines
-          )
-            ? response.options
-              .busLines
-            : [],
-
-        checkpoints:
-          Array.isArray(
-            response.options
-              .checkpoints
-          )
-            ? response.options
-              .checkpoints
-            : [
-              'ป้อมหน้า',
-              'ป้อมล่าง'
-            ]
-      };
-
-      applyBackendConfig(
-        response.config
+      saveOptionsCache(
+        response
       );
 
-      fillOptions();
-
-      updatePersonTypeFields();
-
-      updateGauge();
-
-      const requiredMissing =
-        [];
-
-      const warnings =
-        [];
-
       if (
-        state.options
-          .personTypes
-          .length === 0
-      ) {
-        requiredMissing.push(
-          'Person type'
-        );
-      }
-
-      if (
-        state.options
-          .inspectors
-          .length === 0
-      ) {
-        requiredMissing.push(
-          'Name'
-        );
-      }
-
-      if (
-        state.options
-          .busLines
-          .length === 0
-      ) {
-        warnings.push(
-          'bus line'
-        );
-      }
-
-      if (
-        requiredMissing
+        result.requiredMissing
           .length > 0
       ) {
         setConnectionStatus(
@@ -1456,17 +1553,14 @@ function updateBusLineOtherField() {
 
         setSystemStatus(
           'เชื่อมต่อสำเร็จ แต่ไม่พบข้อมูลในชีท: ' +
-          requiredMissing.join(
-            ', '
-          ),
+          result.requiredMissing.join(', '),
           'error'
         );
 
         return;
       }
 
-      state.initialized =
-        true;
+      state.initialized = true;
 
       setConnectionStatus(
         true,
@@ -1474,13 +1568,13 @@ function updateBusLineOtherField() {
       );
 
       setSystemStatus(
-        warnings.length > 0
+        result.warnings.length > 0
           ? (
             'ระบบพร้อมใช้งาน แต่ไม่พบข้อมูลในชีท: ' +
-            warnings.join(', ')
+            result.warnings.join(', ')
           )
           : 'โหลดตัวเลือกสำเร็จ ระบบพร้อมใช้งาน',
-        warnings.length > 0
+        result.warnings.length > 0
           ? 'info'
           : 'success'
       );
@@ -1490,6 +1584,42 @@ function updateBusLineOtherField() {
         'loadSystemData error:',
         error
       );
+
+      const cachedResponse =
+        loadOptionsCache();
+
+      if (cachedResponse) {
+        try {
+          const cachedResult =
+            applyOptionsResponse(
+              cachedResponse
+            );
+
+          if (
+            cachedResult.requiredMissing
+              .length === 0
+          ) {
+            state.initialized = true;
+
+            setConnectionStatus(
+              false,
+              'ใช้ข้อมูลสำรอง'
+            );
+
+            setSystemStatus(
+              'Backend ตอบกลับช้า จึงใช้รายการตัวเลือกที่บันทึกไว้ในเครื่อง กรุณากด “โหลดใหม่” ภายหลัง',
+              'info'
+            );
+
+            return;
+          }
+        } catch (cacheError) {
+          console.warn(
+            'Options cache error:',
+            cacheError
+          );
+        }
+      }
 
       setConnectionStatus(
         false,
@@ -1505,13 +1635,9 @@ function updateBusLineOtherField() {
       );
 
     } finally {
-      state.loading =
-        false;
+      state.loading = false;
 
-      setSelectsLoading(
-        false
-      );
-
+      setSelectsLoading(false);
       updateActionButtons();
     }
   }
