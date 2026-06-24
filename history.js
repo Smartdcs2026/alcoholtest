@@ -11503,6 +11503,484 @@ function injectMonthlyRedesignStyles() {
       }
     }
 
+    /**********************************************************
+     * Responsive History Card V5
+     * ปรับหน้าประวัติเมื่อหน้าจอแคบให้เป็นการ์ดแนวตั้ง
+     **********************************************************/
+
+    @media (max-width: 680px) {
+      .swal2-container {
+        padding:
+          6px !important;
+      }
+
+      .ahx-main-popup {
+        width:
+          calc(100vw - 12px)
+          !important;
+
+        max-width:
+          calc(100vw - 12px)
+          !important;
+
+        height:
+          calc(100dvh - 12px)
+          !important;
+
+        max-height:
+          calc(100dvh - 12px)
+          !important;
+
+        margin:
+          0 !important;
+
+        border-radius:
+          14px !important;
+      }
+
+      .ahx-main-html {
+        height:
+          100% !important;
+
+        max-height:
+          100% !important;
+
+        overflow-x:
+          hidden !important;
+      }
+
+      .ahx-app {
+        min-height:
+          100%;
+      }
+
+      .ahx-topbar,
+      .ahx-topbar-clean {
+        min-height:
+          56px;
+
+        padding:
+          8px;
+      }
+
+      .ahx-topbar-clean h2 {
+        font-size:
+          14px;
+      }
+
+      .ahx-topbar-clean p {
+        font-size:
+          8px;
+      }
+
+      .ahx-topbar-actions {
+        gap:
+          4px;
+      }
+
+      .ahx-text-button,
+      .ahx-back-button {
+        min-height:
+          30px;
+
+        padding:
+          5px 7px;
+
+        font-size:
+          8px;
+      }
+
+      .ahx-icon-button {
+        width:
+          30px;
+
+        min-height:
+          30px;
+      }
+
+      .ahx-day-toolbar {
+        top:
+          56px;
+
+        grid-template-columns:
+          repeat(
+            2,
+            minmax(0, 1fr)
+          );
+
+        gap:
+          6px;
+
+        padding:
+          7px;
+      }
+
+      .ahx-search-wrap {
+        grid-column:
+          1 / -1;
+      }
+
+      .ahx-filter-reset {
+        grid-column:
+          1 / -1;
+
+        width:
+          100%;
+      }
+
+      .ahx-result-bar {
+        padding:
+          0 8px 7px;
+      }
+
+      .ahx-card-grid {
+        gap:
+          10px;
+
+        padding:
+          0 8px 10px;
+      }
+
+      .ahx-person-card,
+      .ahx-person-card.deny {
+        display:
+          grid;
+
+        grid-template-columns:
+          minmax(0, 1fr);
+
+        min-height:
+          0;
+
+        border-radius:
+          14px;
+
+        background:
+          #ffffff;
+      }
+
+      .ahx-card-photo {
+        width:
+          100%;
+
+        height:
+          clamp(
+            180px,
+            42vw,
+            225px
+          );
+
+        min-height:
+          0;
+
+        border-right:
+          0;
+
+        border-bottom:
+          1px solid
+          #dce5ea;
+      }
+
+      .ahx-card-photo img {
+        width:
+          100%;
+
+        height:
+          100%;
+
+        min-height:
+          0;
+
+        object-fit:
+          cover;
+
+        object-position:
+          center 34%;
+      }
+
+      .ahx-photo-open {
+        right:
+          9px;
+
+        bottom:
+          9px;
+      }
+
+      .ahx-card-body {
+        padding:
+          12px;
+      }
+
+      .ahx-card-topline {
+        display:
+          grid;
+
+        grid-template-columns:
+          minmax(0, 1fr)
+          minmax(118px, auto);
+
+        align-items:
+          start;
+
+        gap:
+          10px;
+      }
+
+      .ahx-card-identity h3 {
+        font-size:
+          17px;
+      }
+
+      .ahx-card-identity p,
+      .ahx-card-subtitle {
+        font-size:
+          10px;
+      }
+
+      .ahx-card-side {
+        align-items:
+          flex-end;
+
+        max-width:
+          170px;
+      }
+
+      .ahx-status-badge {
+        width:
+          100%;
+
+        max-width:
+          170px;
+
+        min-height:
+          30px;
+
+        padding:
+          6px 8px;
+
+        font-size:
+          8px;
+
+        line-height:
+          1.25;
+
+        text-align:
+          center;
+
+        white-space:
+          normal;
+      }
+
+      .ahx-card-field-grid {
+        grid-template-columns:
+          repeat(
+            3,
+            minmax(0, 1fr)
+          );
+
+        gap:
+          6px;
+
+        margin-top:
+          10px;
+      }
+
+      .ahx-card-field {
+        min-height:
+          54px;
+
+        padding:
+          8px;
+      }
+
+      .ahx-card-field small {
+        font-size:
+          8px;
+      }
+
+      .ahx-card-field strong {
+        font-size:
+          10px;
+      }
+
+      .ahx-card-values {
+        grid-template-columns:
+          repeat(
+            4,
+            minmax(0, 1fr)
+          );
+
+        gap:
+          6px;
+
+        margin-top:
+          8px;
+      }
+
+      .ahx-card-value {
+        min-height:
+          58px;
+
+        padding:
+          7px 4px;
+      }
+
+      .ahx-card-value strong {
+        font-size:
+          15px;
+      }
+
+      .ahx-card-foot {
+        gap:
+          8px;
+
+        min-height:
+          42px;
+      }
+
+      .ahx-card-image-state {
+        max-width:
+          none;
+
+        flex:
+          1 1 auto;
+      }
+
+      .ahx-detail-button {
+        flex:
+          0 0 auto;
+      }
+    }
+
+    @media (max-width: 430px) {
+      .swal2-container {
+        padding:
+          0 !important;
+      }
+
+      .ahx-main-popup {
+        width:
+          100vw !important;
+
+        max-width:
+          100vw !important;
+
+        height:
+          100dvh !important;
+
+        max-height:
+          100dvh !important;
+
+        border:
+          0 !important;
+
+        border-radius:
+          0 !important;
+      }
+
+      .ahx-topbar-title {
+        gap:
+          6px;
+      }
+
+      .ahx-title-mark {
+        display:
+          none;
+      }
+
+      .ahx-topbar-clean h2 {
+        font-size:
+          13px;
+      }
+
+      .ahx-card-photo {
+        height:
+          190px;
+      }
+
+      .ahx-card-body {
+        padding:
+          10px;
+      }
+
+      .ahx-card-topline {
+        grid-template-columns:
+          minmax(0, 1fr)
+          minmax(104px, 132px);
+
+        gap:
+          7px;
+      }
+
+      .ahx-card-identity h3 {
+        font-size:
+          15px;
+      }
+
+      .ahx-card-side {
+        max-width:
+          132px;
+      }
+
+      .ahx-card-time {
+        font-size:
+          8px;
+      }
+
+      .ahx-status-badge {
+        max-width:
+          132px;
+
+        padding:
+          5px 6px;
+
+        font-size:
+          7px;
+      }
+
+      .ahx-card-field-grid {
+        grid-template-columns:
+          repeat(
+            2,
+            minmax(0, 1fr)
+          );
+      }
+
+      .ahx-card-values {
+        grid-template-columns:
+          repeat(
+            2,
+            minmax(0, 1fr)
+          );
+      }
+
+      .ahx-card-foot {
+        align-items:
+          stretch;
+
+        flex-wrap:
+          wrap;
+      }
+
+      .ahx-card-image-state {
+        min-width:
+          100%;
+      }
+
+      .ahx-detail-button {
+        width:
+          100%;
+      }
+
+      .ahx-round-row {
+        grid-template-columns:
+          38px
+          62px
+          minmax(0, 1fr)
+          auto;
+      }
+    }
+
   `;
 
   document.head
