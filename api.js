@@ -19,6 +19,7 @@
   ).replace(/\/+$/, '');
 
   const DEFAULT_API_TIMEOUT_MS = 30000;
+  const DEFAULT_OPTIONS_TIMEOUT_MS = 70000;
   const DEFAULT_SAVE_TIMEOUT_MS = 120000;
   const DEFAULT_HISTORY_TIMEOUT_MS = 60000;
 
@@ -677,7 +678,10 @@
           'AbortError'
       ) {
         throw new AlcoholAPIError(
-          'การเชื่อมต่อใช้เวลานานเกินกำหนด ระบบจะตรวจสอบผลรายการก่อนแจ้งให้ทราบ',
+          cleanText(
+            settings.timeoutMessage
+          ) ||
+          'การเชื่อมต่อใช้เวลานานเกินกำหนด กรุณาลองใหม่อีกครั้ง',
           'REQUEST_TIMEOUT',
           0,
           {
@@ -759,9 +763,12 @@
 
         timeoutMs:
           finiteNumber(
-            CONFIG.API_TIMEOUT_MS,
-            DEFAULT_API_TIMEOUT_MS
-          )
+            CONFIG.OPTIONS_TIMEOUT_MS,
+            DEFAULT_OPTIONS_TIMEOUT_MS
+          ),
+
+        timeoutMessage:
+          'ระบบใช้เวลานานเกินกำหนดในการโหลดข้อมูลตัวเลือก กรุณากด “โหลดใหม่”'
       }
     );
   }
@@ -1099,7 +1106,10 @@
                 CONFIG.SAVE_TIMEOUT_MS,
                 DEFAULT_SAVE_TIMEOUT_MS
               )
-            )
+            ),
+
+          timeoutMessage:
+            'การบันทึกใช้เวลานานเกินกำหนด ระบบจะตรวจสอบผลรายการก่อนแจ้งให้ทราบ'
         }
       );
 
