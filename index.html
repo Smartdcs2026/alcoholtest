@@ -40,7 +40,7 @@
 
   <link
   rel="stylesheet"
-  href="styles.css?v=20260624-01"
+  href="styles.css?v=20260624-02"
 >
 </head>
 
@@ -168,7 +168,7 @@
           <b id="alertMeasurementValue">
             1.00 Mg%
           </b>
-          ตั้งแต่เกณฑ์ 1.00 Mg% ขึ้นไป
+          นโยบายแอลกอฮอล์เป็นศูนย์: ตั้งแต่ 1.00 Mg% ขึ้นไป
         </span>
 
       </div>
@@ -462,7 +462,7 @@
           <!-- Gauge แนวตั้งขนาดเล็กชิดกล้อง -->
           <section
             id="gaugePanel"
-            class="gauge-panel level-safe"
+            class="gauge-panel level-empty"
             aria-label="ระดับปริมาณแอลกอฮอล์"
           >
 
@@ -472,7 +472,7 @@
               aria-live="polite"
               title="ค่าปริมาณแอลกอฮอล์"
             >
-              --
+              รอกรอกค่า
             </div>
 
 
@@ -490,12 +490,12 @@
                 10
               </span>
 
-              <span class="scale-number scale-1">
-                1
+              <span class="scale-number scale-1 scale-deny">
+                1 ห้าม
               </span>
 
-              <span class="scale-number scale-0">
-                0
+              <span class="scale-number scale-0 scale-safe">
+                0 ผ่าน
               </span>
 
 
@@ -629,8 +629,8 @@
 
               </div>
 
-              <small class="measurement-rule">
-                ตั้งแต่ 1.00 Mg% ขึ้นไป ห้ามเข้าพื้นที่และห้ามปฏิบัติงาน
+              <small class="measurement-rule measurement-rule-zero">
+                ค่า 0.00 Mg% เท่านั้นที่ผ่าน · ตั้งแต่ 1.00 Mg% ห้ามเข้าพื้นที่และห้ามปฏิบัติงาน
               </small>
 
             </div>
@@ -841,17 +841,17 @@
      JavaScript
 ====================================================== -->
 
-<script src="config.js?v=20260624-01"></script>
+<script src="config.js?v=20260624-02"></script>
 
-<script src="api.js?v=20260624-01"></script>
+<script src="api.js?v=20260624-02"></script>
 
-<script src="image-processor.js?v=20260624-01"></script>
+<script src="image-processor.js?v=20260624-02"></script>
 
-<script src="app.js?v=20260624-01"></script>
+<script src="app.js?v=20260624-02"></script>
 
-<script src="blur-editor.js?v=20260624-01"></script>
+<script src="blur-editor.js?v=20260624-02"></script>
 
-<script src="camera.js?v=20260624-01"></script>
+<script src="camera.js?v=20260624-02"></script>
 
 
 <!-- SweetAlert2 ต้องอยู่ก่อน history.js -->
@@ -861,6 +861,6 @@
 
 
 <!-- ระบบ Login / ปฏิทิน / ประวัติ -->
-<script src="history.js?v=20260624-01"></script>
+<script src="history.js?v=20260624-02"></script>
 </body>
 </html>
