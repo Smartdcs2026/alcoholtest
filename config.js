@@ -23,10 +23,7 @@
 
     API_TIMEOUT_MS:
       30000,
-
-   API_TIMEOUT_MS:
-  30000,
-
+    
 SAVE_TIMEOUT_MS:
   120000,
 
