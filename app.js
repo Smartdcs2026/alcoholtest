@@ -905,26 +905,72 @@ function updateBusLineOtherField() {
   }
 
 
+  const GAUGE_MIN_VISIBLE_PERCENT = 28;
+
+
+  /*
+   * นโยบายการแสดงผลแบบ Zero Alcohol
+   * - 0 Mg%      = ผ่าน
+   * - ตั้งแต่ 1  = ห้ามเข้าพื้นที่ / ห้ามปฏิบัติงาน
+   */
   function getGaugeLevelClass(
-    value
+    value,
+    hasValue
   ) {
-    if (value < 1) {
-      return 'level-safe';
+    if (!hasValue) {
+      return 'level-empty';
     }
 
-    if (value < 10) {
-      return 'level-warning';
+    return value >= 1
+      ? 'level-critical'
+      : 'level-safe';
+  }
+
+
+  /*
+   * ค่า 1 Mg% ต้องมองเห็นได้ชัดบนแถบ
+   * จึงกำหนดให้เริ่มแสดงอย่างน้อย 28% ของความสูงแถบ
+   * แล้วจึงไล่ระดับไปถึง GAUGE_MAX
+   */
+  function calculateGaugePercentage(
+    value,
+    gaugeMaximum
+  ) {
+    const number =
+      Number(value);
+
+    if (
+      !Number.isFinite(number) ||
+      number < 1
+    ) {
+      return 0;
     }
 
-    if (value < 25) {
-      return 'level-orange';
+    const maximum =
+      Math.max(
+        1,
+        Number(gaugeMaximum) || 50
+      );
+
+    if (maximum <= 1) {
+      return 100;
     }
 
-    if (value < 50) {
-      return 'level-danger';
-    }
+    const ratio =
+      Math.min(
+        1,
+        Math.max(
+          0,
+          (number - 1) /
+          (maximum - 1)
+        )
+      );
 
-    return 'level-critical';
+    return (
+      GAUGE_MIN_VISIBLE_PERCENT +
+      ratio *
+      (100 - GAUGE_MIN_VISIBLE_PERCENT)
+    );
   }
 
 
@@ -964,16 +1010,9 @@ function updateBusLineOtherField() {
       );
 
     const percentage =
-      Math.min(
-        100,
-        Math.max(
-          0,
-          (
-            value /
-            gaugeMaximum
-          ) *
-          100
-        )
+      calculateGaugePercentage(
+        value,
+        gaugeMaximum
       );
 
     const gaugeMask =
@@ -1007,41 +1046,32 @@ function updateBusLineOtherField() {
         'auto';
     }
 
-    setText(
-      'gaugeValue',
-      hasValue
-        ? (
-          value >=
-          gaugeMaximum
-            ? (
-              gaugeMaximum +
-              '+ Mg%'
-            )
-            : (
-              value.toFixed(2) +
-              ' Mg%'
-            )
-        )
-        : 'ยังไม่กรอก'
-    );
-
-    const threshold =
-      Number(
-        state.config
-          .alertThreshold
-      );
-
-    const finalThreshold =
-      Number.isFinite(
-        threshold
-      )
-        ? threshold
-        : 1;
-
     const isDenied =
       hasValue &&
-      value >=
-      finalThreshold;
+      value >= 1;
+
+    const isSafeZero =
+      hasValue &&
+      value < 1;
+
+    let gaugeText =
+      'รอกรอกค่า';
+
+    if (hasValue) {
+      gaugeText =
+        value.toFixed(2) +
+        ' Mg%\n' +
+        (
+          isDenied
+            ? 'ห้ามเข้าพื้นที่'
+            : 'ผ่าน'
+        );
+    }
+
+    setText(
+      'gaugeValue',
+      gaugeText
+    );
 
     const gaugePanel =
       getElement(
@@ -1052,6 +1082,7 @@ function updateBusLineOtherField() {
       gaugePanel
         .classList
         .remove(
+          'level-empty',
           'level-safe',
           'level-warning',
           'level-orange',
@@ -1063,8 +1094,23 @@ function updateBusLineOtherField() {
         .classList
         .add(
           getGaugeLevelClass(
-            value
+            value,
+            hasValue
           )
+        );
+
+      gaugePanel
+        .classList
+        .toggle(
+          'has-measurement',
+          hasValue
+        );
+
+      gaugePanel
+        .classList
+        .toggle(
+          'is-safe-zero',
+          isSafeZero
         );
 
       gaugePanel
@@ -1073,6 +1119,22 @@ function updateBusLineOtherField() {
           'is-denied',
           isDenied
         );
+
+      gaugePanel.setAttribute(
+        'aria-label',
+        hasValue
+          ? (
+            'ปริมาณแอลกอฮอล์ ' +
+            value.toFixed(2) +
+            ' มิลลิกรัมเปอร์เซ็นต์ ' +
+            (
+              isDenied
+                ? 'ห้ามเข้าพื้นที่และห้ามปฏิบัติงาน'
+                : 'ผ่าน'
+            )
+          )
+          : 'ยังไม่ได้กรอกปริมาณแอลกอฮอล์'
+      );
     }
 
     const alertBanner =
@@ -1112,10 +1174,13 @@ function updateBusLineOtherField() {
       return;
     }
 
-    const threshold =
-      Number(
-        config.alertThreshold
-      );
+    /*
+     * ระบบนี้บังคับเกณฑ์ Zero Alcohol:
+     * ตั้งแต่ 1 Mg% ขึ้นไปเป็น DENY เสมอ
+     */
+    state.config
+      .alertThreshold =
+      1;
 
     const gaugeMax =
       Number(
@@ -1126,17 +1191,6 @@ function updateBusLineOtherField() {
       Number(
         config.maxRounds
       );
-
-    if (
-      Number.isFinite(
-        threshold
-      ) &&
-      threshold >= 0
-    ) {
-      state.config
-        .alertThreshold =
-        threshold;
-    }
 
     if (
       Number.isFinite(
