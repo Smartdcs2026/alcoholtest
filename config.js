@@ -24,6 +24,9 @@
     API_TIMEOUT_MS:
       30000,
 
+    OPTIONS_TIMEOUT_MS:
+      70000,
+
     SAVE_TIMEOUT_MS:
       120000,
 
