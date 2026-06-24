@@ -5946,3 +5946,431 @@ body.swal2-shown {
   }
 
 }
+
+/************************************************************
+ * Zero Alcohol Gauge Enhancement
+ * 0 Mg% = ผ่าน / ตั้งแต่ 1 Mg% = ห้าม
+ ************************************************************/
+
+:root {
+  --gauge-width:
+    52px;
+}
+
+
+.gauge-panel {
+  border-left:
+    2px solid
+    #111b20;
+
+  background:
+    linear-gradient(
+      180deg,
+      #dce5e9,
+      #f7fafb
+    );
+}
+
+
+.gauge-value {
+  top:
+    8px;
+
+  right:
+    calc(
+      100% +
+      7px
+    );
+
+  width:
+    122px;
+
+  min-height:
+    43px;
+
+  padding:
+    5px 8px;
+
+  border:
+    2px solid
+    rgba(255, 255, 255, 0.92);
+
+  border-radius:
+    10px;
+
+  background:
+    rgba(55, 70, 79, 0.96);
+
+  box-shadow:
+    0 5px 18px
+    rgba(0, 0, 0, 0.38);
+
+  font-size:
+    10px;
+
+  line-height:
+    1.25;
+
+  white-space:
+    pre-line;
+}
+
+
+.gauge-panel.level-empty
+.gauge-value {
+  color:
+    #ffffff;
+
+  background:
+    rgba(55, 70, 79, 0.96);
+}
+
+
+.gauge-panel.level-safe
+.gauge-value,
+.gauge-panel.is-safe-zero
+.gauge-value {
+  color:
+    #ffffff;
+
+  background:
+    linear-gradient(
+      135deg,
+      #08713d,
+      #10a25c
+    );
+}
+
+
+.gauge-panel.is-denied
+.gauge-value,
+.gauge-panel.level-critical
+.gauge-value {
+  color:
+    #ffffff;
+
+  background:
+    linear-gradient(
+      135deg,
+      #8e0000,
+      #f00000
+    );
+
+  box-shadow:
+    0 0 0 2px
+    rgba(255, 255, 255, 0.36),
+    0 7px 22px
+    rgba(190, 0, 0, 0.55);
+}
+
+
+.gauge-track {
+  height:
+    19px;
+
+  border:
+    2px solid
+    #11191d;
+
+  background:
+    #d6dee2;
+
+  box-shadow:
+    0 0 0 2px
+    rgba(255, 255, 255, 0.78),
+    0 3px 12px
+    rgba(0, 0, 0, 0.30);
+}
+
+
+.gauge-gradient {
+  background:
+    linear-gradient(
+      to right,
+      #ff3b30 0%,
+      #ef0000 42%,
+      #b70000 72%,
+      #710000 100%
+    );
+}
+
+
+.gauge-mask {
+  background:
+    rgba(233, 239, 242, 0.97);
+
+  transition:
+    width 160ms ease;
+}
+
+
+.gauge-indicator {
+  width:
+    5px;
+
+  height:
+    29px;
+
+  border-radius:
+    5px;
+
+  background:
+    #101010;
+
+  box-shadow:
+    0 0 0 3px
+    #ffffff,
+    0 0 12px
+    rgba(0, 0, 0, 0.55);
+
+  transition:
+    left 160ms ease,
+    opacity 160ms ease;
+}
+
+
+.gauge-panel.level-empty
+.gauge-indicator {
+  opacity:
+    0;
+}
+
+
+.gauge-panel.is-safe-zero
+.gauge-indicator {
+  background:
+    #00a357;
+}
+
+
+.gauge-panel.is-denied
+.gauge-indicator {
+  background:
+    #ff0000;
+
+  box-shadow:
+    0 0 0 3px
+    #ffffff,
+    0 0 15px
+    rgba(255, 0, 0, 0.90);
+}
+
+
+.scale-number {
+  right:
+    2px;
+
+  min-width:
+    38px;
+
+  padding:
+    2px 3px;
+
+  border-radius:
+    5px;
+
+  color:
+    #1d2b32;
+
+  background:
+    rgba(255, 255, 255, 0.88);
+
+  font-size:
+    7px;
+
+  font-weight:
+    950;
+
+  text-align:
+    center;
+}
+
+
+/* ตำแหน่งสเกลสัมพันธ์กับการเริ่มแถบที่ 28% เมื่อค่าเท่ากับ 1 */
+.scale-50 {
+  top:
+    1px;
+}
+
+
+.scale-25 {
+  top:
+    auto;
+
+  bottom:
+    63%;
+
+  transform:
+    translateY(50%);
+}
+
+
+.scale-10 {
+  top:
+    auto;
+
+  bottom:
+    41%;
+
+  transform:
+    translateY(50%);
+}
+
+
+.scale-1 {
+  bottom:
+    28%;
+}
+
+
+.scale-0 {
+  bottom:
+    0;
+}
+
+
+.scale-deny {
+  color:
+    #ffffff;
+
+  background:
+    #d00000;
+}
+
+
+.scale-safe {
+  color:
+    #ffffff;
+
+  background:
+    #078247;
+}
+
+
+.gauge-unit {
+  right:
+    3px;
+
+  color:
+    #273941;
+
+  font-size:
+    7px;
+}
+
+
+.measurement-rule-zero {
+  display:
+    block;
+
+  margin-top:
+    4px;
+
+  padding:
+    6px 8px;
+
+  border:
+    1px solid
+    #ee9b9b;
+
+  border-radius:
+    8px;
+
+  color:
+    #9d0000;
+
+  background:
+    #fff0f0;
+
+  font-weight:
+    850;
+
+  line-height:
+    1.4;
+}
+
+
+@media (
+  max-width: 360px
+) {
+  :root {
+    --gauge-width:
+      48px;
+  }
+
+  .gauge-value {
+    right:
+      calc(
+        100% +
+        5px
+      );
+
+    width:
+      108px;
+
+    min-height:
+      40px;
+
+    font-size:
+      9px;
+  }
+
+  .gauge-track {
+    height:
+      17px;
+  }
+
+  .scale-number {
+    min-width:
+      35px;
+
+    font-size:
+      6px;
+  }
+}
+
+
+@media (
+  min-width: 760px
+) {
+  :root {
+    --gauge-width:
+      60px;
+  }
+
+  .gauge-value {
+    width:
+      142px;
+
+    min-height:
+      50px;
+
+    font-size:
+      12px;
+  }
+
+  .gauge-track {
+    height:
+      22px;
+  }
+
+  .scale-number {
+    min-width:
+      44px;
+
+    font-size:
+      8px;
+  }
+}
+
+
+@media (
+  max-width: 900px
+) and (
+  orientation: landscape
+) {
+  :root {
+    --gauge-width:
+      50px;
+  }
+}
