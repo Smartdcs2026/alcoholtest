@@ -1344,19 +1344,7 @@
         )
       );
 
-   body.page =
-  Math.max(
-    1,
-
-    Math.floor(
-      Number(
-        body.page
-      ) ||
-      1
-    )
-  );
-
-body.pageSize =
+    body.pageSize =
   Math.min(
     30,
 
