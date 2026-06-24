@@ -1865,9 +1865,8 @@ function updateActionButtons() {
       );
 
     /*
-     * ในชุดไฟล์ปัจจุบันยังไม่มี Blur Editor
-     * จึงใช้ภาพที่เลือกเป็นทั้งภาพต้นฉบับและภาพสำหรับแสดงผล
-     * เพื่อให้ Backend สามารถบันทึกข้อมูลได้ครบถ้วน
+     * ใช้ภาพที่ผ่าน Blur Editor เมื่อมีข้อมูล
+     * และใช้ภาพต้นฉบับเป็น fallback เมื่อผู้ใช้เลือกข้ามการเบลอ
      */
     const blurredImageData =
       cleanText(
@@ -2304,55 +2303,32 @@ function updateActionButtons() {
    ************************************************************/
 
   function getDeviceId() {
-    const storageKey =
-      'alcohol_test_device_id';
-
-    try {
-      let value =
-        cleanText(
-          window.localStorage
-            .getItem(
-              storageKey
-            )
-        );
-
-      if (!value) {
-        value =
-          API &&
-          typeof API
-            .createRequestId ===
-          'function'
-            ? (
-              'DEVICE-' +
-              API.createRequestId()
-            )
-            : (
-              'DEVICE-' +
-              Date.now()
-                .toString(36)
-                .toUpperCase()
-            );
-
-        window.localStorage
-          .setItem(
-            storageKey,
-            value
-          );
-      }
-
-      return value.slice(
+    if (
+      API &&
+      typeof API
+        .getOrCreateDeviceId ===
+        'function'
+    ) {
+      return cleanText(
+        API.getOrCreateDeviceId()
+      ).slice(
         0,
         250
       );
-
-    } catch (error) {
-      return (
-        'DEVICE-' +
-        Date.now()
-          .toString(36)
-          .toUpperCase()
-      );
     }
+
+    /*
+     * Fallback ใช้เฉพาะกรณี api.js โหลดไม่สำเร็จ
+     */
+    return (
+      'DEVICE-' +
+      Date.now()
+        .toString(36)
+        .toUpperCase()
+    ).slice(
+      0,
+      250
+    );
   }
 
 
@@ -3123,4 +3099,3 @@ function updateActionButtons() {
     });
 
 })(window, document);
-
